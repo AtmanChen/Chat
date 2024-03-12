@@ -25,7 +25,7 @@ public struct DialogListLogic {
 
 	public enum Action {
 		case onTask
-		case contactOperationObservation(ContactOperation)
+		case contactOperationUpdate(ContactOperation)
 		case fetchDialogsResponse([Dialog])
 		case didOpenDialog(Dialog)
 	}
@@ -38,22 +38,16 @@ public struct DialogListLogic {
 			switch action {
 			case .onTask:
 				state.initialized = true
-				let registerObservationEffect = Effect<Action>.run { send in
-					for await contactOperation in contactOperationPublisher.publisher.values {
-						await send(.contactOperationObservation(contactOperation))
-					}
-				}
-				let fetchDialogsEffect = Effect<Action>.run { send in
+				return .run { send in
 					let dialogs = try await databaseClient.fetchDialogs()
 					await send(.fetchDialogsResponse(dialogs))
 				}
-				return Effect.merge(registerObservationEffect, fetchDialogsEffect).animation(.default)
 				
 			case let .fetchDialogsResponse(dialogs):
 				state.dialogs = IdentifiedArray(uniqueElements: dialogs)
 				return .none
 				
-			case let .contactOperationObservation(contactOperation):
+			case let .contactOperationUpdate(contactOperation):
 				switch contactOperation {
 				case let .open(contactId):
 					if let targetDialogIndex = state.dialogs.firstIndex(where: { $0.peerId == contactId }) {
@@ -93,7 +87,9 @@ public struct DialogListView: View {
 			.listStyle(.plain)
 		}
 		.task {
-			await store.send(.onTask).finish()
+			if !store.initialized {
+				await store.send(.onTask).finish()
+			}
 		}
 	}
 }

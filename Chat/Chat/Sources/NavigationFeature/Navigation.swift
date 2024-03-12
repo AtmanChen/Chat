@@ -17,7 +17,7 @@ import SwiftUI
 public struct NavigationLogic {
 	public init() {}
 
-	public enum Tab: Equatable {
+	public enum Tab: Equatable, Hashable {
 		case dialog
 		case contact
 		case setting
@@ -51,7 +51,7 @@ public struct NavigationLogic {
 			case let .contact(.delegate(.didSelectContact(contactId))):
 				state.path.append(.messageList(MessageListLogic.State(contactId: contactId)))
 				return .none
-				
+
 			case let .tabChanged(tab):
 				state.currentTab = tab
 				return .none
@@ -75,51 +75,51 @@ public struct RootView: View {
 
 	public var body: some View {
 		NavigationStack(
-			path: $store.scope(state: \.path, action: \.path)) {
-				TabView(selection: $store.currentTab.sending(\.tabChanged)) {
-					DialogListView(
-						store: store.scope(
-							state: \.dialog,
-							action: \.dialog
-						)
+			path: $store.scope(state: \.path, action: \.path))
+		{
+			TabView(selection: $store.currentTab.sending(\.tabChanged)) {
+				DialogListView(
+					store: store.scope(
+						state: \.dialog,
+						action: \.dialog
 					)
-					.tabItem {
-						Label("Chat", systemImage: "bubble.left.fill")
-					}
-					.tag(NavigationLogic.Tab.dialog)
-
-					ContactListView(
-						store: store.scope(
-							state: \.contact,
-							action: \.contact
-						)
-					)
-					.tabItem {
-						Label("Contact", systemImage: "person.and.person.fill")
-					}
-					.tag(NavigationLogic.Tab.contact)
-
-					SettingView(
-						store: store.scope(
-							state: \.setting,
-							action: \.setting
-						)
-					)
-					.tabItem {
-						Label("Seeting", systemImage: "gearshape.fill")
-					}
-					.tag(NavigationLogic.Tab.setting)
+				)
+				.tabItem {
+					Label("Chat", systemImage: "bubble.left.fill")
 				}
-				.foregroundStyle(Color.primary.gradient, Color.secondary.gradient)
-				.tint(.primary)
-				.task { await store.send(.onTask).finish() }
-				.ignoresSafeArea()
-			} destination: { store in
-				switch store.case {
-				case let .messageList(store):
-					MessageListView(store: store)
+				.tag(NavigationLogic.Tab.dialog)
+
+				ContactListView(
+					store: store.scope(
+						state: \.contact,
+						action: \.contact
+					)
+				)
+				.tabItem {
+					Label("Contact", systemImage: "person.and.person.fill")
 				}
+				.tag(NavigationLogic.Tab.contact)
+
+				SettingView(
+					store: store.scope(
+						state: \.setting,
+						action: \.setting
+					)
+				)
+				.tabItem {
+					Label("Seeting", systemImage: "gearshape.fill")
+				}
+				.tag(NavigationLogic.Tab.setting)
 			}
-
+			.foregroundStyle(Color.primary.gradient, Color.secondary.gradient)
+			.tint(.primary)
+			.task { await store.send(.onTask).finish() }
+			.ignoresSafeArea()
+		} destination: { store in
+			switch store.case {
+			case let .messageList(store):
+				MessageListView(store: store)
+			}
+		}
 	}
 }

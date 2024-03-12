@@ -101,6 +101,8 @@ public struct ContactListLogic {
 					if !isDialogExist {
 						let insertDialog = Dialog(peerId: peerId, title: peerName)
 						let _ = try await databaseClient.insertDialog(insertDialog)
+					} else {
+						try await databaseClient.openDialog(peerId)
 					}
 					await send(.delegate(.didSelectContact(peerId)))
 				}

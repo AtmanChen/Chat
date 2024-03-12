@@ -17,6 +17,7 @@ public struct DatabaseClient {
 	public var fetchContact: @Sendable (Int64) async throws -> Contact?
 	public var fetchContacts: @Sendable () async throws -> [Contact]
 	public var fetchDialog: @Sendable (Int64) async throws -> Dialog?
+	public var openDialog: @Sendable (Int64) async throws -> Void
 	public var isDialogExist: @Sendable (Int64) async throws -> Bool
 	public var fetchDialogs: @Sendable () async throws -> [Dialog]
 	public var fetchDialogMessages: @Sendable (Int64) async throws -> [Message]
@@ -59,18 +60,18 @@ extension DatabaseClient: DependencyKey {
 
 		return DatabaseClient(
 			createTables: {
-				try db.run(contacts.create { table in
+				try db.run(contacts.create(ifNotExists: true) { table in
 					table.column(contactIdEx, primaryKey: true)
 					table.column(contactNameEx)
 				})
 
-				try db.run(dialogs.create { table in
+				try db.run(dialogs.create(ifNotExists: true) { table in
 					table.column(dialogPeerIdEx, primaryKey: true)
 					table.column(dialogTitleEx)
 					table.column(dialogLatestMessageIdEx)
 				})
 
-				try db.run(messages.create { table in
+				try db.run(messages.create(ifNotExists: true) { table in
 					table.column(messageIdEx, primaryKey: .autoincrement)
 					table.column(messageDialogIdEx)
 					table.column(messageSenderIdEx)
@@ -112,18 +113,17 @@ extension DatabaseClient: DependencyKey {
 //						d.peerId = ?
 //				"""
 				let query = dialogs
-					.join(.leftOuter, messages, on: messages[messageIdEx] == dialogs[dialogLatestMessageIdEx])
 					.filter(dialogPeerIdEx == peerId)
-					.select(dialogPeerIdEx, dialogTitleEx, dialogLatestMessageIdEx, messageIdEx, messageSenderIdEx, messageContentEx, messageTimestampEx)
-				if let row = try db.pluck(query) {
-					let dialog = try Dialog(
+				return try db.pluck(query).map { row in
+					try Dialog(
 						peerId: row.get(dialogPeerIdEx),
-						title: row.get(dialogTitleEx),
-						latestMessageId: row.get(dialogLatestMessageIdEx),
-						latestMessage: row.get(dialogLatestMessageIdEx) != nil ? Message(dialogId: peerId, senderId: row.get(messageSenderIdEx), content: row.get(messageContentEx), timestamp: row.get(messageTimestampEx)) : nil
+						title: row.get(dialogTitleEx)
 					)
 				}
-				return nil
+			},
+			openDialog: { peerId in
+				@Dependency(\.contactOperationAsyncStream) var contactOperationAsyncStream
+				contactOperationAsyncStream.send(.open(contactId: peerId))
 			},
 			isDialogExist: { peerId in
 				let countQuery = dialogs.filter(dialogPeerIdEx == peerId).count
@@ -191,11 +191,8 @@ extension DatabaseClient: DependencyKey {
 					dialogLatestMessageIdEx <- dialog.latestMessageId
 				)
 				try db.run(insert)
-
-				Task.detached {
-					@Dependency(\.contactOperationPublisher) var contactOperationPublisher
-					contactOperationPublisher.send(.open(contactId: dialog.peerId))
-				}
+				@Dependency(\.contactOperationAsyncStream) var contactOperationAsyncStream
+				contactOperationAsyncStream.send(.open(contactId: dialog.peerId))
 				return dialog
 			},
 			insertMessage: { message in

@@ -5,79 +5,15 @@
    version = "2.0">
    <Breakpoints>
       <BreakpointProxy
-         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
-         <BreakpointContent
-            uuid = "95E3EB2C-4535-4A09-8891-5013AE25F01C"
-            shouldBeEnabled = "Yes"
-            ignoreCount = "0"
-            continueAfterRunningActions = "No"
-            filePath = "../../../Library/Developer/Xcode/DerivedData/Chat-dexvgqtakialieeetahcrwsbwtch/SourcePackages/checkouts/swift-perception/Sources/Perception/PerceptionRegistrar.swift"
-            startingColumnNumber = "9223372036854775807"
-            endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "216"
-            endingLineNumber = "216"
-            landmarkName = "perceptionCheck(file:line:)"
-            landmarkType = "7">
-         </BreakpointContent>
-      </BreakpointProxy>
-      <BreakpointProxy
          BreakpointExtensionID = "Xcode.Breakpoint.ExceptionBreakpoint">
          <BreakpointContent
-            uuid = "F2CFF738-7020-44A7-A3A1-6482F2C036A1"
+            uuid = "A224297E-DBF9-46F7-94D6-084D40ACB2B7"
             shouldBeEnabled = "Yes"
             ignoreCount = "0"
             continueAfterRunningActions = "No"
             breakpointStackSelectionBehavior = "1"
             scope = "1"
             stopOnStyle = "0">
-         </BreakpointContent>
-      </BreakpointProxy>
-      <BreakpointProxy
-         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
-         <BreakpointContent
-            uuid = "5F3BE8B9-F5EF-4830-A34D-16E9E4897D46"
-            shouldBeEnabled = "Yes"
-            ignoreCount = "0"
-            continueAfterRunningActions = "No"
-            filePath = "Chat/Chat/Sources/DialogFeature/DialogList.swift"
-            startingColumnNumber = "9223372036854775807"
-            endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "58"
-            endingLineNumber = "58"
-            landmarkName = "body"
-            landmarkType = "24">
-            <Locations>
-               <Location
-                  uuid = "5F3BE8B9-F5EF-4830-A34D-16E9E4897D46 - 8fc41cbf5f8a6677"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "closure #1 (inout DialogFeature.DialogListLogic.State, DialogFeature.DialogListLogic.Action) -&gt; ComposableArchitecture.Effect&lt;DialogFeature.DialogListLogic.Action&gt; in DialogFeature.DialogListLogic.body.getter : some"
-                  moduleName = "Chat"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/anderson/Developer/Swift/Chat/Chat/Chat/Sources/DialogFeature/DialogList.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "58"
-                  endingLineNumber = "58"
-                  offsetFromSymbolStart = "1528">
-               </Location>
-               <Location
-                  uuid = "5F3BE8B9-F5EF-4830-A34D-16E9E4897D46 - 8fc41cbf5f8a6677"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "closure #1 (inout DialogFeature.DialogListLogic.State, DialogFeature.DialogListLogic.Action) -&gt; ComposableArchitecture.Effect&lt;DialogFeature.DialogListLogic.Action&gt; in DialogFeature.DialogListLogic.body.getter : some"
-                  moduleName = "Chat"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/anderson/Developer/Swift/Chat/Chat/Chat/Sources/DialogFeature/DialogList.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "58"
-                  endingLineNumber = "58"
-                  offsetFromSymbolStart = "1508">
-               </Location>
-            </Locations>
          </BreakpointContent>
       </BreakpointProxy>
    </Breakpoints>

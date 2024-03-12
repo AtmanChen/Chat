@@ -28,6 +28,8 @@ public struct ChatLogic {
 		case onTask
 		case registerNotification
 		case didLoginSuccessResponse(Account)
+		case registerDatabaseObservation
+		case contactOperationUpdate(ContactOperation)
 		case didLogout
 		case view(View.Action)
 	}
@@ -37,10 +39,12 @@ public struct ChatLogic {
 	public var body: some ReducerOf<Self> {
 		core
 			.onChange(of: \.account) { account, state, _ in
-				if account != nil {
-					state.view = .navigation(NavigationLogic.State())
-				} else {
-					state.view = .login(LoginLogic.State())
+				withAnimation {
+					if account != nil {
+						state.view = .navigation(NavigationLogic.State())
+					} else {
+						state.view = .login(LoginLogic.State())
+					}
 				}
 				return .none
 			}
@@ -50,6 +54,7 @@ public struct ChatLogic {
 				return .run { send in
 					try await databaseClient.createTables()
 					await send(.registerNotification)
+					await send(.registerDatabaseObservation)
 				} catch: { _, _ in
 					debugPrint("Create Tables Failed...")
 				}
@@ -69,6 +74,7 @@ public struct ChatLogic {
 			NavigationLogic()
 		}
 		AuthLogic()
+		DatabaseObersavation()
 	}
 	
 	@Reducer(state: .equatable)
