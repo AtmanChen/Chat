@@ -10,7 +10,7 @@ import Dependencies
 import Foundation
 import SQLite
 
-protocol DatabaseOperation: Equatable {}
+public protocol DatabaseOperation: Equatable {}
 
 public struct DatabaseClient {
 	public var createTables: @Sendable () async throws -> Void

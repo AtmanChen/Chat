@@ -31,7 +31,6 @@ public struct DialogListLogic {
 	}
 	
 	@Dependency(\.databaseClient) var databaseClient
-	@Dependency(\.contactOperationPublisher) var contactOperationPublisher
 	
 	public var body: some ReducerOf<Self> {
 		Reduce { state, action in
