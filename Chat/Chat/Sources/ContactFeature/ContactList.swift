@@ -21,20 +21,28 @@ public struct ContactListLogic {
 		public var isLoading = false
 		public var initialized = false
 		public var selectedContactId: Int64?
+		@Presents var alert: AlertState<Action.Alert>?
 		public init() {}
 	}
 
 	public enum Action {
 		case onTask
+		case alert(PresentationAction<Alert>)
 		case contacts(IdentifiedActionOf<ContactRowLogic>)
 		case fetchContactsFromDBResponse([Contact])
 		case didTapAddContactButton
 		case addContactResponse(Result<Contact, Error>)
 		case didSelectContact(Contact)
+		case didTapDeleteContact(atOffset: IndexSet)
+		case didDeleteContact(peerId: Int64)
 		case delegate(Delegate)
 
 		public enum Delegate {
 			case didSelectContact(Int64)
+		}
+		
+		public enum Alert: Equatable {
+			case confirmDeleteContact(Int64)
 		}
 	}
 
@@ -91,6 +99,30 @@ public struct ContactListLogic {
 				default: break
 				}
 				return .none
+				
+			case let .didTapDeleteContact(atOffset):
+				guard let index = atOffset.first else {
+					return .none
+				}
+				let peerId = state.contacts[index].id
+				state.alert = AlertState {
+					TextState("Are you sure to delete this contact?")
+				} actions: {
+					ButtonState(role: .destructive, action: .confirmDeleteContact(peerId)) {
+						TextState("Delete")
+					}
+				}
+				return .none
+				
+			case let .alert(.presented(.confirmDeleteContact(peerId))):
+				return .run { send in
+					try await databaseClient.deleteContact(peerId)
+					await send(.didDeleteContact(peerId: peerId))
+				}
+				
+			case let .didDeleteContact(peerId):
+				state.contacts.remove(id: peerId)
+				return .none
 
 			case .contacts:
 				return .none
@@ -110,6 +142,7 @@ public struct ContactListLogic {
 			default: return .none
 			}
 		}
+		.ifLet(\.$alert, action: \.alert)
 	}
 }
 
@@ -128,6 +161,9 @@ public struct ContactListView: View {
 						.onTapGesture {
 							store.send(.didSelectContact(contactStore.contact))
 						}
+				}
+				.onDelete { indexSet in
+					store.send(.didTapDeleteContact(atOffset: indexSet))
 				}
 			}
 			.listStyle(.plain)
@@ -161,6 +197,7 @@ public struct ContactListView: View {
 			.disabled(store.isLoading)
 			.padding()
 		}
+		.alert(store: store.scope(state: \.$alert, action: \.alert))
 		.navigationTitle("Contacts")
 		.navigationBarTitleDisplayMode(.large)
 	}

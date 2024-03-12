@@ -86,6 +86,7 @@ public struct RootView: View {
 				)
 				.tabItem {
 					Label("Chat", systemImage: "bubble.left.fill")
+						.tint(.primary)
 				}
 				.tag(NavigationLogic.Tab.dialog)
 
@@ -97,6 +98,7 @@ public struct RootView: View {
 				)
 				.tabItem {
 					Label("Contact", systemImage: "person.and.person.fill")
+						.tint(.primary)
 				}
 				.tag(NavigationLogic.Tab.contact)
 
@@ -108,13 +110,11 @@ public struct RootView: View {
 				)
 				.tabItem {
 					Label("Seeting", systemImage: "gearshape.fill")
+						.tint(.primary)
 				}
 				.tag(NavigationLogic.Tab.setting)
 			}
-			.foregroundStyle(Color.primary.gradient, Color.secondary.gradient)
-			.tint(.primary)
 			.task { await store.send(.onTask).finish() }
-			.ignoresSafeArea()
 		} destination: { store in
 			switch store.case {
 			case let .messageList(store):

@@ -23,14 +23,14 @@ public struct DatabaseOperationAsyncStream<T: DatabaseOperation>: DependencyKey 
 	public func send(_ operation: T) {
 		continuation.yield(operation)
 	}
-	
+
 	public static var liveValue: DatabaseOperationAsyncStream<T> {
 		DatabaseOperationAsyncStream()
 	}
 }
 
-extension DependencyValues {
-	public var contactOperationAsyncStream: DatabaseOperationAsyncStream<ContactOperation> {
+public extension DependencyValues {
+	var contactOperationAsyncStream: DatabaseOperationAsyncStream<ContactOperation> {
 		get { self[DatabaseOperationAsyncStream<ContactOperation>.self] }
 		set { self[DatabaseOperationAsyncStream<ContactOperation>.self] = newValue }
 	}

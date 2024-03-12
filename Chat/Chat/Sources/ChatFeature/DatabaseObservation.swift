@@ -1,16 +1,19 @@
 //
 //  File.swift
-//  
+//
 //
 //  Created by Anderson  on 2024/3/12.
 //
 
 import ComposableArchitecture
 import DatabaseClient
+import Foundation
 
 @Reducer
-public struct DatabaseObersavation {
+public struct DatabaseObservation {
 	@Dependency(\.contactOperationAsyncStream) var contactOperationAsyncStream
+	@Dependency(\.databaseClient) var databaseClient
+
 	public func reduce(into state: inout ChatLogic.State, action: ChatLogic.Action) -> Effect<ChatLogic.Action> {
 		switch action {
 		case .registerDatabaseObservation:
@@ -19,15 +22,13 @@ public struct DatabaseObersavation {
 				debugPrint("ContactOperationPublisher -->> register")
 				for await contactOperation in contactOperationAsyncStream.stream {
 					debugPrint("ContactOperationPublisher -->> received: \(contactOperation)")
-					await send(.contactOperationUpdate(contactOperation))
+					await send(.contactOperationUpdate(contactOperation), animation: .default)
 				}
 			}
 			.cancellable(id: Cancel.id)
-			
 		case let .contactOperationUpdate(contactOperation):
-			return .run { send in
-				await send(.view(.navigation(.dialog(.contactOperationUpdate(contactOperation)))))
-			}
+			return .send(.view(.navigation(.dialog(.contactOperationUpdate(contactOperation)))))
+
 		default: return .none
 		}
 	}

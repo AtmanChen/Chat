@@ -46,6 +46,10 @@ public struct DialogListLogic {
 				state.dialogs = IdentifiedArray(uniqueElements: dialogs)
 				return .none
 				
+			case let .didOpenDialog(dialog):
+				state.dialogs.insert(dialog, at: 0)
+				return .none
+				
 			case let .contactOperationUpdate(contactOperation):
 				switch contactOperation {
 				case let .open(contactId):
@@ -58,12 +62,13 @@ public struct DialogListLogic {
 							await send(.didOpenDialog(dialog))
 						}
 					}
-				default: return .none
+					
+				case let .delete(peerIds):
+					state.dialogs.removeAll(where: { peerIds.contains($0.peerId) })
+					return .none
 				}
 				
-			case let .didOpenDialog(dialog):
-				state.dialogs.insert(dialog, at: 0)
-				return .none
+			default: return .none
 			}
 		}
 	}

@@ -74,7 +74,7 @@ public struct ChatLogic {
 			NavigationLogic()
 		}
 		AuthLogic()
-		DatabaseObersavation()
+		DatabaseObservation()
 	}
 	
 	@Reducer(state: .equatable)

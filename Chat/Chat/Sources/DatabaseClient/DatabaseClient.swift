@@ -23,6 +23,7 @@ public struct DatabaseClient {
 	public var fetchDialogMessages: @Sendable (Int64) async throws -> [Message]
 	public var insertContact: @Sendable (Contact) async throws -> Contact
 	public var insertContacts: @Sendable ([Contact]) async throws -> [Contact]
+	public var deleteContact: @Sendable (Int64) async throws -> Void
 	public var insertDialog: @Sendable (Dialog) async throws -> Dialog
 	public var insertMessage: @Sendable (Message) async throws -> Message
 }
@@ -183,6 +184,15 @@ extension DatabaseClient: DependencyKey {
 					}
 				}
 				return cs
+			},
+			deleteContact: { peerId in
+				try db.transaction {
+					try db.run(contacts.filter(contactIdEx == peerId).delete())
+					try db.run(dialogs.filter(dialogPeerIdEx == peerId).delete())
+					try db.run(messages.filter(messageDialogIdEx == peerId).delete())
+				}
+				@Dependency(\.contactOperationAsyncStream) var contactOperationAsyncStream
+				contactOperationAsyncStream.send(.delete(contactIds: [peerId]))
 			},
 			insertDialog: { dialog in
 				let insert = dialogs.insert(
