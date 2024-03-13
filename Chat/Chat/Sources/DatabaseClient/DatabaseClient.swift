@@ -22,10 +22,9 @@ public struct DatabaseClient {
 	public var isDialogExist: @Sendable (Int64) async throws -> Bool
 	public var fetchDialogs: @Sendable () async throws -> [Dialog]
 	public var fetchDialogMessages: @Sendable (Int64) async throws -> [Message]
-	public var insertContact: @Sendable (Contact) async throws -> Contact
 	public var insertContacts: @Sendable ([Contact]) async throws -> [Contact]
-	public var deleteContact: @Sendable (Int64) async throws -> Void
-	public var insertDialog: @Sendable (Dialog) async throws -> Dialog
+	public var deleteContacts: @Sendable ([Int64]) async throws -> Void
+	public var insertDialogs: @Sendable ([Dialog]) async throws -> [Dialog]
 	public var insertMessages: @Sendable ([Message]) async throws -> [Message]?
 	public var listener: @Sendable () -> AsyncStream<any DatabaseOperation> = { .finished }
 
@@ -205,14 +204,6 @@ extension DatabaseClient: DependencyKey {
 					)
 				}
 			},
-			insertContact: { contact in
-				let insert = contactsTable.insert(
-					contactIdEx <- contact.id,
-					contactNameEx <- contact.name
-				)
-				try db.run(insert)
-				return contact
-			},
 			insertContacts: { cs in
 				try db.transaction {
 					for contact in cs {
@@ -225,23 +216,30 @@ extension DatabaseClient: DependencyKey {
 				}
 				return cs
 			},
-			deleteContact: { peerId in
+			deleteContacts: { peerIds in
 				try db.transaction {
-					try db.run(contactsTable.filter(contactIdEx == peerId).delete())
-					try db.run(dialogsTable.filter(dialogPeerIdEx == peerId).delete())
-					try db.run(messagesTable.filter(messageDialogIdEx == peerId).delete())
+					for peerId in peerIds {
+						try db.run(contactsTable.filter(contactIdEx == peerId).delete())
+						try db.run(dialogsTable.filter(dialogPeerIdEx == peerId).delete())
+						try db.run(messagesTable.filter(messageDialogIdEx == peerId).delete())
+					}
 				}
-				updateSubject.send(ContactOperation.delete(contactIds: [peerId]))
+				updateSubject.send(ContactOperation.delete(contactIds: peerIds))
 			},
-			insertDialog: { dialog in
-				let insert = dialogsTable.insert(
-					dialogPeerIdEx <- dialog.peerId,
-					dialogTitleEx <- dialog.title,
-					dialogLatestMessageIdEx <- dialog.latestMessageId
-				)
-				try db.run(insert)
-				updateSubject.send(ContactOperation.open(contactId: dialog.peerId))
-				return dialog
+			insertDialogs: { dialogs in
+				var insertedDialogs: [Dialog] = []
+				try db.transaction {
+					for dialog in dialogs {
+						let insert = dialogsTable.insert(
+							dialogPeerIdEx <- dialog.peerId,
+							dialogTitleEx <- dialog.title,
+							dialogLatestMessageIdEx <- dialog.latestMessageId
+						)
+						try db.run(insert)
+						updateSubject.send(ContactOperation.open(contactId: dialog.peerId))
+					}
+				}
+				return insertedDialogs
 			},
 			insertMessages: { messages in
 				var insertedMessages: [Message] = []

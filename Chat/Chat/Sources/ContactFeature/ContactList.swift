@@ -79,7 +79,7 @@ public struct ContactListLogic {
 					let randomResponse = try JSONDecoder().decode(Response.self, from: data)
 					if let name = randomResponse.results.first?.name.description {
 						let contact = Contact(id: contactId, name: name)
-						_ = try await databaseClient.insertContact(contact)
+						_ = try await databaseClient.insertContacts([contact])
 						await send(.addContactResponse(.success(contact)), animation: .default)
 					}
 				} catch: { error, send in
@@ -116,7 +116,7 @@ public struct ContactListLogic {
 				
 			case let .alert(.presented(.confirmDeleteContact(peerId))):
 				return .run { send in
-					try await databaseClient.deleteContact(peerId)
+					try await databaseClient.deleteContacts([peerId])
 					await send(.didDeleteContact(peerId: peerId), animation: .default)
 				}
 				
@@ -132,7 +132,7 @@ public struct ContactListLogic {
 					let isDialogExist = try await databaseClient.isDialogExist(peerId)
 					if !isDialogExist {
 						let insertDialog = Dialog(peerId: peerId, title: peerName)
-						let _ = try await databaseClient.insertDialog(insertDialog)
+						let _ = try await databaseClient.insertDialogs([insertDialog])
 					} else {
 						try await databaseClient.openDialog(peerId)
 					}
