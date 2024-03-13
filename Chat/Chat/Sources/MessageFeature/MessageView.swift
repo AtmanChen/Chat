@@ -15,7 +15,7 @@ extension Message {
 		senderId == Contact.`self`.id
 	}
 	public var bubbleBackground: AnyGradient {
-		isOutgoing ? Color.primary.gradient : Color(.lightGray).gradient
+		isOutgoing ? Color(.darkGray).gradient : Color(.lightGray).gradient
 	}
 }
 

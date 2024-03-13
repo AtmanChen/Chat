@@ -14,6 +14,7 @@ public protocol DatabaseOperation: Equatable {}
 
 public struct DatabaseClient {
 	public var createTables: @Sendable () async throws -> Void
+	public var fetchQuickReplies: @Sendable () async throws -> [QuickReply]
 	public var fetchContact: @Sendable (Int64) async throws -> Contact?
 	public var fetchContacts: @Sendable () async throws -> [Contact]
 	public var fetchDialog: @Sendable (Int64) async throws -> Dialog?
@@ -62,6 +63,10 @@ extension DatabaseClient: DependencyKey {
 		let messageContentEx = Expression<String>("content")
 		let messageTimestampEx = Expression<Int64>("timestamp")
 
+		let quickRepliesTable = Table("quickReplies")
+		let quickReplyIdEx = Expression<Int64>("id")
+		let quickReplyMessageEx = Expression<String>("message")
+
 		return DatabaseClient(
 			createTables: {
 				try db.run(contactsTable.create(ifNotExists: true) { table in
@@ -82,6 +87,34 @@ extension DatabaseClient: DependencyKey {
 					table.column(messageContentEx)
 					table.column(messageTimestampEx)
 				})
+
+				try db.run(quickRepliesTable.create(ifNotExists: true) { table in
+					table.column(quickReplyIdEx, primaryKey: .autoincrement)
+					table.column(quickReplyMessageEx)
+				})
+
+				// 插入默认的快速回复内容
+				let defaultQuickReplies = [
+					"Hello!",
+					"Thank you!",
+					"I agree.",
+					"Could you please provide more information?",
+					"I'm not sure, let me check and get back to you."
+				]
+
+				if try db.scalar(quickRepliesTable.count) == 0 {
+					try db.run(quickRepliesTable.insertMany(defaultQuickReplies.map({ reply in
+						[quickReplyMessageEx <- reply]
+					})))
+				}
+			},
+			fetchQuickReplies: {
+				try db.prepare(quickRepliesTable.order(quickReplyIdEx.desc)).map { row in
+					QuickReply(
+						id: try row.get(quickReplyIdEx),
+						message: try row.get(quickReplyMessageEx)
+					)
+				}
 			},
 			fetchContact: { contactId in
 				let query = contactsTable.filter(contactIdEx == contactId)
@@ -143,15 +176,15 @@ extension DatabaseClient: DependencyKey {
 						if let latestMessageId = try dialogRow.get(dialogLatestMessageIdEx) {
 							let latestMessageQuery = messagesTable.filter(messageIdEx == latestMessageId)
 							if let messageRow = try db.pluck(latestMessageQuery) {
-								let dialog = Dialog(
+								let dialog = try Dialog(
 									peerId: dialogId,
 									title: dialogName,
 									latestMessageId: latestMessageId,
 									latestMessage: Message(
 										dialogId: dialogId,
-										senderId: try messageRow.get(messageSenderIdEx),
-										content: try messageRow.get(messageContentEx),
-										timestamp: try messageRow.get(messageTimestampEx)
+										senderId: messageRow.get(messageSenderIdEx),
+										content: messageRow.get(messageContentEx),
+										timestamp: messageRow.get(messageTimestampEx)
 									)
 								)
 								dialogs.append(dialog)

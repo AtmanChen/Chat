@@ -6,6 +6,7 @@
 //
 
 import ComposableArchitecture
+import DatabaseClient
 import Foundation
 import SwiftUI
 
@@ -19,6 +20,8 @@ public struct MessageInputLogic {
 		public var sendMessageButtonDisabled = true
 		public var focus: Field?
 		public var shouldDisplayPlaceholder = true
+		public var showQuickReplies = false
+		public var quickReplies: [QuickReply] = []
 		public init() {}
 		public enum Field: Hashable {
 			case messageInput
@@ -31,12 +34,17 @@ public struct MessageInputLogic {
 		case didTapSendMessageButton
 		case messageInputFocus
 		case resignMessageInput
+		case toggleQuickRepliesMenu
+		case fetchQuickRepliesResponse(quickReplies: [QuickReply])
+		case didTapQuickReply(message: String)
 		case delegate(Delegate)
 
 		public enum Delegate {
 			case sendMessage(String)
 		}
 	}
+
+	@Dependency(\.databaseClient.fetchQuickReplies) var fetchQuickReplies
 
 	public var body: some ReducerOf<Self> {
 		BindingReducer()
@@ -57,7 +65,7 @@ public struct MessageInputLogic {
 					state.shouldDisplayPlaceholder = state.messageText.isEmpty
 				}
 				return .none
-				
+
 			case .binding(\.messageText):
 				state.sendMessageButtonDisabled = state.messageText.isEmpty
 				return .none
@@ -66,7 +74,10 @@ public struct MessageInputLogic {
 				return .none
 
 			case .onTask:
-				return .none
+				return .run { send in
+					let quickReplies = try await fetchQuickReplies()
+					await send(.fetchQuickRepliesResponse(quickReplies: quickReplies))
+				}
 
 			case .messageInputFocus:
 				if state.focus == nil {
@@ -81,7 +92,21 @@ public struct MessageInputLogic {
 					state.shouldDisplayPlaceholder = state.messageText.isEmpty
 				}
 				return .none
-				
+
+			case .toggleQuickRepliesMenu:
+				return .none
+
+			case let .fetchQuickRepliesResponse(quickReplies):
+				state.quickReplies = quickReplies
+				return .none
+
+			case let .didTapQuickReply(message):
+				if state.focus != nil {
+					state.focus = nil
+					state.shouldDisplayPlaceholder = state.messageText.isEmpty
+				}
+				return .send(.delegate(.sendMessage(message)))
+
 			case .delegate:
 				return .none
 			}
@@ -111,13 +136,31 @@ public struct MessageInputView: View {
 
 				TextEditor(text: $store.messageText)
 					.colorMultiply(store.shouldDisplayPlaceholder ? .clear : .white)
+					.tint(Color.primary)
 					.focused($focusedField, equals: .messageInput)
+					.overlay(alignment: .trailing) {
+						Menu {
+							ForEach(store.quickReplies) { quickReply in
+								Button {
+									store.send(.didTapQuickReply(message: quickReply.message))
+								} label: {
+									Text(quickReply.message)
+								}
+							}
+						} label: {
+							Image(systemName: "square.and.pencil.circle")
+								.resizable()
+								.scaledToFill()
+								.foregroundStyle(Color.primary.gradient)
+								.frame(width: 28, height: 28)
+						}
+					}
 			}
-			.frame(minHeight: 40, maxHeight: 100)
+			.frame(minHeight: 44, maxHeight: 100)
 			.fixedSize(horizontal: false, vertical: true)
-			.padding(EdgeInsets(top: 0, leading: 10, bottom: 0, trailing: 10))
+			.padding(.horizontal)
 			.background(Color(.systemGray6).gradient)
-			.clipShape(RoundedRectangle(cornerRadius: 20))
+			.clipShape(Capsule())
 			.scrollContentBackground(.hidden)
 
 			Button {
@@ -133,5 +176,8 @@ public struct MessageInputView: View {
 		}
 		.padding()
 		.bind($store.focus, to: $focusedField)
+		.task {
+			await store.send(.onTask).finish()
+		}
 	}
 }
