@@ -6,4 +6,4 @@
 
 | 会话列表
 |--------------
-| ![会话列表](/AppScreenShots/chatList.PNG) 
+| ![会话列表](/Chat/AppScreenShots/chatList.PNG) 
