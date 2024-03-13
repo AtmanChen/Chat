@@ -50,7 +50,7 @@ public struct MessageView: View {
 				.foregroundStyle(Color.white.gradient)
 			Text(Date(timeIntervalSince1970: Double(message.timestamp)), style: .time)
 				.font(.system(size: 10, weight: .semibold))
-				.foregroundStyle(Color.secondary.gradient)
+				.foregroundStyle(Color.white.opacity(0.5).gradient)
 		}
 		.padding(10)
 		.background(message.bubbleBackground)
