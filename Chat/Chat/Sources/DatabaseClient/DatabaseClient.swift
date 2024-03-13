@@ -26,6 +26,9 @@ public struct DatabaseClient {
 	public var deleteContact: @Sendable (Int64) async throws -> Void
 	public var insertDialog: @Sendable (Dialog) async throws -> Dialog
 	public var insertMessage: @Sendable (Message) async throws -> Message
+	public var listener: @Sendable () -> AsyncStream<any DatabaseOperation> = { .finished }
+	
+	private static let updateSubject = PassthroughSubject<any DatabaseOperation, Never>()
 }
 
 public extension DependencyValues {
@@ -123,8 +126,7 @@ extension DatabaseClient: DependencyKey {
 				}
 			},
 			openDialog: { peerId in
-				@Dependency(\.contactOperationAsyncStream) var contactOperationAsyncStream
-				contactOperationAsyncStream.send(.open(contactId: peerId))
+				updateSubject.send(ContactOperation.open(contactId: peerId))
 			},
 			isDialogExist: { peerId in
 				let countQuery = dialogs.filter(dialogPeerIdEx == peerId).count
@@ -191,8 +193,7 @@ extension DatabaseClient: DependencyKey {
 					try db.run(dialogs.filter(dialogPeerIdEx == peerId).delete())
 					try db.run(messages.filter(messageDialogIdEx == peerId).delete())
 				}
-				@Dependency(\.contactOperationAsyncStream) var contactOperationAsyncStream
-				contactOperationAsyncStream.send(.delete(contactIds: [peerId]))
+				updateSubject.send(ContactOperation.delete(contactIds: [peerId]))
 			},
 			insertDialog: { dialog in
 				let insert = dialogs.insert(
@@ -201,8 +202,7 @@ extension DatabaseClient: DependencyKey {
 					dialogLatestMessageIdEx <- dialog.latestMessageId
 				)
 				try db.run(insert)
-				@Dependency(\.contactOperationAsyncStream) var contactOperationAsyncStream
-				contactOperationAsyncStream.send(.open(contactId: dialog.peerId))
+				updateSubject.send(ContactOperation.open(contactId: dialog.peerId))
 				return dialog
 			},
 			insertMessage: { message in
@@ -214,6 +214,16 @@ extension DatabaseClient: DependencyKey {
 				)
 				try db.run(insert)
 				return message
+			},
+			listener: {
+				AsyncStream { continuation in
+					let cancellable = updateSubject.sink(receiveValue: {
+						continuation.yield($0)
+					})
+					continuation.onTermination = { _ in
+						cancellable.cancel()
+					}
+				}
 			}
 		)
 	}()

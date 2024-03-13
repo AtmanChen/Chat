@@ -117,7 +117,7 @@ public struct ContactListLogic {
 			case let .alert(.presented(.confirmDeleteContact(peerId))):
 				return .run { send in
 					try await databaseClient.deleteContact(peerId)
-					await send(.didDeleteContact(peerId: peerId))
+					await send(.didDeleteContact(peerId: peerId), animation: .default)
 				}
 				
 			case let .didDeleteContact(peerId):

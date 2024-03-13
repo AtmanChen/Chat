@@ -67,8 +67,6 @@ public struct DialogListLogic {
 					state.dialogs.removeAll(where: { peerIds.contains($0.peerId) })
 					return .none
 				}
-				
-			default: return .none
 			}
 		}
 	}
