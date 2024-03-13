@@ -4,6 +4,6 @@
 
 ## 截图
 
-| 会话列表
-|--------------
-| ![会话列表](/Chat/AppScreenShots/chatList.PNG) 
+| 会话列表 | 会话   | 快捷回复 | 发送文本 |
+|--------|--------|---------|---------|
+| ![会话列表](/Chat/AppScreenShots/chatList.PNG) | ![会话](/Chat/AppScreenShots/chat.PNG) | ![快捷回复](/Chat/AppScreenShots/quickReply.PNG) | ![发送文本](/Chat/AppScreenShots/inputMessage.PNG)
