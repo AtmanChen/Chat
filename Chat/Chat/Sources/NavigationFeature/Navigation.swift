@@ -51,6 +51,10 @@ public struct NavigationLogic {
 			case let .contact(.delegate(.didSelectContact(contactId))):
 				state.path.append(.messageList(MessageListLogic.State(contactId: contactId)))
 				return .none
+				
+			case let .dialog(.delegate(.didSelectDialog(dialog))):
+				state.path.append(.messageList(MessageListLogic.State(contactId: dialog.peerId)))
+				return .none
 
 			case let .tabChanged(tab):
 				state.currentTab = tab

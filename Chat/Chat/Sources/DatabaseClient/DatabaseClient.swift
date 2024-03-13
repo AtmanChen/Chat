@@ -27,7 +27,7 @@ public struct DatabaseClient {
 	public var insertDialog: @Sendable (Dialog) async throws -> Dialog
 	public var insertMessage: @Sendable (Message) async throws -> Message
 	public var listener: @Sendable () -> AsyncStream<any DatabaseOperation> = { .finished }
-	
+
 	private static let updateSubject = PassthroughSubject<any DatabaseOperation, Never>()
 }
 
@@ -157,7 +157,7 @@ extension DatabaseClient: DependencyKey {
 				}
 			},
 			fetchDialogMessages: { dialogId in
-				try db.prepare("SELECT * FROM messages WHERE dialogId = ?", dialogId).map { row in
+				try db.prepare("SELECT * FROM messages WHERE dialogId = ? ORDER BY timestamp DESC", dialogId).map { row in
 					Message(
 						id: row[0] as! Int64,
 						dialogId: row[1] as! Int64,
@@ -212,8 +212,15 @@ extension DatabaseClient: DependencyKey {
 					messageContentEx <- message.content,
 					messageTimestampEx <- message.timestamp
 				)
-				try db.run(insert)
-				return message
+				let rowId = try db.run(insert)
+				let insertedMessage = Message(
+					id: rowId,
+					dialogId: message.dialogId,
+					senderId: message.senderId,
+					content: message.content,
+					timestamp: message.timestamp
+				)
+				return insertedMessage
 			},
 			listener: {
 				AsyncStream { continuation in

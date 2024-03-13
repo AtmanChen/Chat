@@ -8,6 +8,10 @@
 import Foundation
 import SQLite
 
+public enum MessageOperation: DatabaseOperation {
+	case didSendMessageInDialog(dialogId: Int64)
+}
+
 public struct Message: Identifiable, Codable, Equatable {
 	
 	public let id: Int64

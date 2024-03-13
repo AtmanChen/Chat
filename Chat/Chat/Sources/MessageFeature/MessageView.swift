@@ -15,7 +15,7 @@ extension Message {
 		senderId == Contact.`self`.id
 	}
 	public var bubbleBackground: AnyGradient {
-		isOutgoing ? Color.primary.gradient : Color(.darkGray).gradient
+		isOutgoing ? Color.primary.gradient : Color(.lightGray).gradient
 	}
 }
 
@@ -29,24 +29,25 @@ public struct MessageView: View {
 			if message.isOutgoing {
 				Spacer()
 				bubbleContent
-					.background(.clear)
+					.padding(.leading, 40)
+					.padding(.trailing, 8)
+			} else {
+				bubbleContent
+					.padding(.leading, 8)
+					.padding(.trailing, 40)
+				Spacer()
 			}
-			bubbleContent
-				.background(.clear)
-			Spacer()
 		}
 	}
 	
 	@ViewBuilder
 	@MainActor
 	private var bubbleContent: some View {
-		GeometryReader { geometry in
-			Text(message.content)
-				.padding(10)
-				.foregroundColor(.white)
-				.background(message.bubbleBackground)
-				.clipShape(RoundedCornerShape(isOutgoing: message.isOutgoing))
-				.frame(maxWidth: geometry.size.width * 0.7, alignment: message.isOutgoing ? .trailing : .leading)
-		}
+		Text(message.content)
+			.padding(10)
+			.foregroundColor(.white)
+			.background(message.bubbleBackground)
+			.clipShape(RoundedCornerShape(isOutgoing: message.isOutgoing))
+			.frame(maxWidth: .infinity, alignment: message.isOutgoing ? .trailing : .leading)
 	}
 }

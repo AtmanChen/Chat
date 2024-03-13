@@ -28,6 +28,12 @@ public struct DialogListLogic {
 		case contactOperationUpdate(ContactOperation)
 		case fetchDialogsResponse([Dialog])
 		case didOpenDialog(Dialog)
+		case didSelectDialog(Dialog)
+		case delegate(Delegate)
+		
+		public enum Delegate {
+			case didSelectDialog(Dialog)
+		}
 	}
 	
 	@Dependency(\.databaseClient) var databaseClient
@@ -67,6 +73,12 @@ public struct DialogListLogic {
 					state.dialogs.removeAll(where: { peerIds.contains($0.peerId) })
 					return .none
 				}
+				
+			case let .didSelectDialog(dialog):
+				return .send(.delegate(.didSelectDialog(dialog)))
+				
+			case .delegate:
+				return .none
 			}
 		}
 	}
@@ -84,6 +96,10 @@ public struct DialogListView: View {
 				ForEach(store.dialogs) { dialog in
 					DialogCellView(dialog: dialog)
 						.listRowBackground(Color.clear)
+						.contentShape(Rectangle())
+						.onTapGesture {
+							store.send(.didSelectDialog(dialog))
+						}
 				}
 			}
 			.listStyle(.plain)
