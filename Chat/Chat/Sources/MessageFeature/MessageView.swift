@@ -1,20 +1,21 @@
 //
 //  File.swift
-//  
+//
 //
 //  Created by Anderson  on 2024/3/10.
 //
 
-import Foundation
 import ComposableArchitecture
-import SwiftUI
 import DatabaseClient
+import Foundation
+import SwiftUI
 
-extension Message {
-	public var isOutgoing: Bool {
+public extension Message {
+	var isOutgoing: Bool {
 		senderId == Contact.`self`.id
 	}
-	public var bubbleBackground: AnyGradient {
+
+	var bubbleBackground: AnyGradient {
 		isOutgoing ? Color(.darkGray).gradient : Color(.lightGray).gradient
 	}
 }
@@ -24,6 +25,7 @@ public struct MessageView: View {
 	public init(message: Message) {
 		self.message = message
 	}
+
 	public var body: some View {
 		HStack {
 			if message.isOutgoing {
@@ -39,15 +41,20 @@ public struct MessageView: View {
 			}
 		}
 	}
-	
+
 	@ViewBuilder
 	@MainActor
 	private var bubbleContent: some View {
-		Text(message.content)
-			.padding(10)
-			.foregroundColor(.white)
-			.background(message.bubbleBackground)
-			.clipShape(RoundedCornerShape(isOutgoing: message.isOutgoing))
-			.frame(maxWidth: .infinity, alignment: message.isOutgoing ? .trailing : .leading)
+		VStack(alignment: message.isOutgoing ? .trailing : .leading, spacing: 4) {
+			Text(message.content)
+				.foregroundStyle(Color.white.gradient)
+			Text(Date(timeIntervalSince1970: Double(message.timestamp)), style: .time)
+				.font(.system(size: 10, weight: .semibold))
+				.foregroundStyle(Color.secondary.gradient)
+		}
+		.padding(10)
+		.background(message.bubbleBackground)
+		.clipShape(RoundedCornerShape(isOutgoing: message.isOutgoing))
+		.frame(maxWidth: .infinity, alignment: message.isOutgoing ? .trailing : .leading)
 	}
 }

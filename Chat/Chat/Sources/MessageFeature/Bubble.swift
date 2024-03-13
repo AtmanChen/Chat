@@ -10,17 +10,17 @@ import SwiftUI
 
 struct RoundedCornerShape: Shape {
 	let isOutgoing: Bool
-	let corners: UIRectCorner
+	let corners: UIRectCorner = .allCorners
 	let radius: CGFloat
 
 	init(isOutgoing: Bool, radius: CGFloat = 10) {
 		self.radius = radius
 		self.isOutgoing = isOutgoing
-		if self.isOutgoing {
-			self.corners = [.topLeft, .topRight, .bottomLeft]
-		} else {
-			self.corners = [.topLeft, .topRight, .bottomRight]
-		}
+//		if self.isOutgoing {
+//			self.corners = [.topLeft, .topRight, .bottomLeft]
+//		} else {
+//			self.corners = [.topLeft, .topRight, .bottomRight]
+//		}
 	}
 
 	func path(in rect: CGRect) -> Path {
