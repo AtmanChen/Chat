@@ -16,7 +16,7 @@ public extension Message {
 	}
 
 	var bubbleBackground: AnyGradient {
-		isOutgoing ? Color(.darkGray).gradient : Color(.lightGray).gradient
+		isOutgoing ? Color(.darkGray).gradient : Color(.gray).gradient
 	}
 }
 

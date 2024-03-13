@@ -116,7 +116,6 @@ public struct RootView: View {
 				.tag(NavigationLogic.Tab.setting)
 			}
 			.tint(.primary)
-			.task { await store.send(.onTask).finish() }
 		} destination: { store in
 			switch store.case {
 			case let .messageList(store):

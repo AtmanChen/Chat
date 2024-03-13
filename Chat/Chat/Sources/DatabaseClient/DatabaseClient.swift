@@ -26,7 +26,7 @@ public struct DatabaseClient {
 	public var insertContacts: @Sendable ([Contact]) async throws -> [Contact]
 	public var deleteContact: @Sendable (Int64) async throws -> Void
 	public var insertDialog: @Sendable (Dialog) async throws -> Dialog
-	public var insertMessage: @Sendable (Message) async throws -> Message?
+	public var insertMessages: @Sendable ([Message]) async throws -> [Message]?
 	public var listener: @Sendable () -> AsyncStream<any DatabaseOperation> = { .finished }
 
 	private static let updateSubject = PassthroughSubject<any DatabaseOperation, Never>()
@@ -195,7 +195,7 @@ extension DatabaseClient: DependencyKey {
 				return dialogs
 			},
 			fetchDialogMessages: { dialogId in
-				try db.prepare("SELECT * FROM messages WHERE dialogId = ? ORDER BY timestamp DESC", dialogId).map { row in
+				try db.prepare("SELECT * FROM messages WHERE dialogId = ? ORDER BY timestamp ASC", dialogId).map { row in
 					Message(
 						id: row[0] as! Int64,
 						dialogId: row[1] as! Int64,
@@ -243,32 +243,35 @@ extension DatabaseClient: DependencyKey {
 				updateSubject.send(ContactOperation.open(contactId: dialog.peerId))
 				return dialog
 			},
-			insertMessage: { message in
-				var insertedMessage: Message?
+			insertMessages: { messages in
+				var insertedMessages: [Message] = []
 				try db.transaction {
-					let insert = messagesTable.insert(
-						messageDialogIdEx <- message.dialogId,
-						messageSenderIdEx <- message.senderId,
-						messageContentEx <- message.content,
-						messageTimestampEx <- message.timestamp
-					)
-					let rowId = try db.run(insert)
-					insertedMessage = Message(
-						id: rowId,
-						dialogId: message.dialogId,
-						senderId: message.senderId,
-						content: message.content,
-						timestamp: message.timestamp
-					)
-					let dialogUpdate = dialogsTable
-						.filter(dialogPeerIdEx == message.dialogId)
-						.update(
-							dialogLatestMessageIdEx <- rowId
+					for message in messages {
+						let insert = messagesTable.insert(
+							messageDialogIdEx <- message.dialogId,
+							messageSenderIdEx <- message.senderId,
+							messageContentEx <- message.content,
+							messageTimestampEx <- message.timestamp
 						)
-					try db.run(dialogUpdate)
-					updateSubject.send(MessageOperation.didSendMessage(message: insertedMessage!))
+						let rowId = try db.run(insert)
+						let insertedMessage = Message(
+							id: rowId,
+							dialogId: message.dialogId,
+							senderId: message.senderId,
+							content: message.content,
+							timestamp: message.timestamp
+						)
+						let dialogUpdate = dialogsTable
+							.filter(dialogPeerIdEx == message.dialogId)
+							.update(
+								dialogLatestMessageIdEx <- rowId
+							)
+						try db.run(dialogUpdate)
+						insertedMessages.append(insertedMessage)
+					}
+					updateSubject.send(MessageOperation.didSendMessage(message: insertedMessages))
 				}
-				return insertedMessage
+				return insertedMessages
 			},
 			listener: {
 				AsyncStream { continuation in

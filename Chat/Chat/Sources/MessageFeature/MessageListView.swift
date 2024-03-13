@@ -33,7 +33,9 @@ public struct MessageListLogic {
 		case fetchMessagesResponse([Message])
 		case didTapBackButton
 		case messageInput(MessageInputLogic.Action)
-		case sendMessageResponse(Result<Message, Error>)
+		case sendMessageResponse(Result<[Message], Error>)
+		case didReceiveMessages(messages: [Message])
+		case mockReceivedMessages
 	}
 
 	@Dependency(\.databaseClient) var databaseClient
@@ -84,8 +86,8 @@ public struct MessageListLogic {
 			case let .messageInput(.delegate(.sendMessage(messageText))):
 				return .run { [dialogId = state.contactId] send in
 					let rawMessage = Message(dialogId: dialogId, senderId: Contact.`self`.id, content: messageText, timestamp: Int64(Date.now.timeIntervalSince1970))
-					if let message = try await databaseClient.insertMessage(rawMessage) {
-						await send(.sendMessageResponse(.success(message)), animation: .default)
+					if let messages = try await databaseClient.insertMessages([rawMessage]) {
+						await send(.sendMessageResponse(.success(messages)), animation: .default)
 					}
 				} catch: { error, send in
 					await send(.sendMessageResponse(.failure(error)))
@@ -93,11 +95,25 @@ public struct MessageListLogic {
 				
 			case let .sendMessageResponse(result):
 				switch result {
-				case let .success(message):
-					state.messages.insert(message, at: 0)
+				case let .success(messages):
+					state.messages.append(contentsOf: messages)
 					return .none
 				case .failure:
 					return .none
+				}
+				
+			case let .didReceiveMessages(messages):
+				state.messages.append(contentsOf: messages)
+				return .none
+				
+			case .mockReceivedMessages:
+				return .run { [dialogId = state.contactId] send in
+					let quickReplies = try await databaseClient.fetchQuickReplies()
+					if let mockMessageContent = quickReplies.randomElement()?.message {
+						let mockMessage = Message(dialogId: dialogId, senderId: dialogId, content: mockMessageContent, timestamp: Int64(Date.now.timeIntervalSince1970))
+						let insertedMockMessages = try await databaseClient.insertMessages([mockMessage]) ?? []
+						await send(.didReceiveMessages(messages: insertedMockMessages), animation: .default)
+					}
 				}
 				
 			case .messageInput:
@@ -116,7 +132,7 @@ public struct MessageListView: View {
 	public var body: some View {
 		VStack {
 			List {
-				ForEach(store.messages) { message in
+				ForEach(store.messages.reversed()) { message in
 					MessageView(message: message)
 						.listRowSeparator(.hidden)
 						.scaleEffect(x: 1, y: -1)
@@ -166,6 +182,14 @@ public struct MessageListView: View {
 								.foregroundStyle(Color(.systemGreen).gradient)
 						}
 					}
+				}
+			}
+			ToolbarItem(placement: .topBarTrailing) {
+				Button {
+					store.send(.mockReceivedMessages)
+				} label: {
+					Image(systemName: "arrow.down.app")
+						.foregroundStyle(Color.primary.gradient)
 				}
 			}
 		}

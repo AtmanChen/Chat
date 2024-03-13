@@ -82,7 +82,13 @@ public struct DialogListLogic {
 				
 			case let .messageOperationUpdate(messageOperation):
 				switch messageOperation {
-				case let .didSendMessage(message):
+				case let .didSendMessage(messages):
+					guard !messages.isEmpty else {
+						return .none
+					}
+					guard let message = messages.last else {
+						return .none
+					}
 					let messageDialogId = message.dialogId
 					if let messageDialogIndex = state.dialogs.firstIndex(where: { $0.peerId == messageDialogId }) {
 						var targetDialog = state.dialogs[messageDialogIndex]
