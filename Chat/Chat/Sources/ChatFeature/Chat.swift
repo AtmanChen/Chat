@@ -30,6 +30,7 @@ public struct ChatLogic {
 		case didLoginSuccessResponse(Account)
 		case registerDatabaseObservation
 		case contactOperationUpdate(ContactOperation)
+		case messageOperationUpdate(MessageOperation)
 		case didLogout
 		case view(View.Action)
 	}

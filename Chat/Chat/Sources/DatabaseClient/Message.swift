@@ -9,7 +9,7 @@ import Foundation
 import SQLite
 
 public enum MessageOperation: DatabaseOperation {
-	case didSendMessageInDialog(dialogId: Int64)
+	case didSendMessage(message: Message)
 }
 
 public struct Message: Identifiable, Codable, Equatable {

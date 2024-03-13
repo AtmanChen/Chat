@@ -19,7 +19,10 @@ public struct Dialog: Identifiable, Codable, Equatable {
 		self.latestMessage = latestMessage
 	}
 	public static func ==(lhs: Dialog, rhs: Dialog) -> Bool {
-		lhs.peerId == rhs.peerId
+		lhs.peerId == rhs.peerId &&
+		lhs.title == rhs.title &&
+		lhs.latestMessageId == rhs.latestMessageId &&
+		lhs.latestMessage == rhs.latestMessage
 	}
 	public var id: Int64 {
 		peerId

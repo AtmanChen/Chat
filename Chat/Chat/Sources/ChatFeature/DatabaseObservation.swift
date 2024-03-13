@@ -22,11 +22,17 @@ public struct DatabaseObservation {
 					if let contactOperation = databaseOperation as? ContactOperation {
 						await send(.contactOperationUpdate(contactOperation), animation: .default)
 					}
+					if let messageOperation = databaseOperation as? MessageOperation {
+						await send(.messageOperationUpdate(messageOperation), animation: .default)
+					}
 				}
 			}
 			.cancellable(id: Cancel.id)
 		case let .contactOperationUpdate(contactOperation):
 			return .send(.view(.navigation(.dialog(.contactOperationUpdate(contactOperation)))))
+			
+		case let .messageOperationUpdate(messageOperation):
+			return .send(.view(.navigation(.dialog(.messageOperationUpdate(messageOperation)))))
 
 		default: return .none
 		}

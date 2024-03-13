@@ -20,7 +20,7 @@ public struct DialogCellView: View {
 			Image(systemName: "person.circle.fill")
 				.resizable()
 				.scaledToFill()
-				.foregroundStyle(Color("themeBackground", bundle: .main))
+				.foregroundStyle(Color.primary.gradient)
 				.frame(width: 44, height: 44)
 			VStack(alignment: .leading) {
 				HStack {
@@ -40,8 +40,9 @@ public struct DialogCellView: View {
 				
 				if let latestMessage = dialog.latestMessage {
 					Text(latestMessage.content)
-						.font(.body)
-						.foregroundStyle(Color.primary.gradient)
+						.lineLimit(1)
+						.font(.subheadline)
+						.foregroundStyle(Color.secondary.gradient)
 				}
 			}
 		}

@@ -5,12 +5,12 @@
 //  Created by Anderson  on 2024/3/10.
 //
 
+import Combine
 import ComposableArchitecture
 import DatabaseClient
 import Foundation
 import MessageFeature
 import SwiftUI
-import Combine
 
 @Reducer
 public struct DialogListLogic {
@@ -25,6 +25,7 @@ public struct DialogListLogic {
 
 	public enum Action {
 		case onTask
+		case messageOperationUpdate(MessageOperation)
 		case contactOperationUpdate(ContactOperation)
 		case fetchDialogsResponse([Dialog])
 		case didOpenDialog(Dialog)
@@ -46,6 +47,8 @@ public struct DialogListLogic {
 				return .run { send in
 					let dialogs = try await databaseClient.fetchDialogs()
 					await send(.fetchDialogsResponse(dialogs))
+				} catch: { error, _ in
+					debugPrint("fetchDialogs: \(error.localizedDescription)")
 				}
 				
 			case let .fetchDialogsResponse(dialogs):
@@ -77,6 +80,28 @@ public struct DialogListLogic {
 			case let .didSelectDialog(dialog):
 				return .send(.delegate(.didSelectDialog(dialog)))
 				
+			case let .messageOperationUpdate(messageOperation):
+				switch messageOperation {
+				case let .didSendMessage(message):
+					let messageDialogId = message.dialogId
+					if let messageDialogIndex = state.dialogs.firstIndex(where: { $0.peerId == messageDialogId }) {
+						var targetDialog = state.dialogs[messageDialogIndex]
+						targetDialog.latestMessageId = message.id
+						targetDialog.latestMessage = message
+						state.dialogs[messageDialogIndex] = targetDialog
+						if messageDialogIndex != 0 {
+							state.dialogs.move(fromOffsets: IndexSet(integer: messageDialogIndex), toOffset: 0)
+						}
+						return .none
+					} else {
+						return .run { [dialogId = message.dialogId] send in
+							if let targetDialog = try await databaseClient.fetchDialog(dialogId) {
+								await send(.didOpenDialog(targetDialog))
+							}
+						}
+					}
+				}
+				
 			case .delegate:
 				return .none
 			}
@@ -93,6 +118,10 @@ public struct DialogListView: View {
 	public var body: some View {
 		VStack {
 			List {
+				Text("Chat")
+					.font(.system(size: 40, weight: .black))
+					.frame(maxWidth: .infinity, alignment: .leading)
+					.listRowSeparator(.hidden)
 				ForEach(store.dialogs) { dialog in
 					DialogCellView(dialog: dialog)
 						.listRowBackground(Color.clear)

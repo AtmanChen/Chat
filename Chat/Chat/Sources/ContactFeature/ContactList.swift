@@ -155,6 +155,10 @@ public struct ContactListView: View {
 	public var body: some View {
 		ZStack(alignment: .bottomTrailing) {
 			List {
+				Text("Contact")
+					.font(.system(size: 40, weight: .black))
+					.frame(maxWidth: .infinity, alignment: .leading)
+					.listRowSeparator(.hidden)
 				ForEach(store.scope(state: \.contacts, action: \.contacts)) { contactStore in
 					ContactRow(store: contactStore)
 						.contentShape(Rectangle())

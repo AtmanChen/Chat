@@ -84,8 +84,9 @@ public struct MessageListLogic {
 			case let .messageInput(.delegate(.sendMessage(messageText))):
 				return .run { [dialogId = state.contactId] send in
 					let rawMessage = Message(dialogId: dialogId, senderId: Contact.`self`.id, content: messageText, timestamp: Int64(Date.now.timeIntervalSince1970))
-					let message = try await databaseClient.insertMessage(rawMessage)
-					await send(.sendMessageResponse(.success(message)), animation: .default)
+					if let message = try await databaseClient.insertMessage(rawMessage) {
+						await send(.sendMessageResponse(.success(message)), animation: .default)
+					}
 				} catch: { error, send in
 					await send(.sendMessageResponse(.failure(error)))
 				}
