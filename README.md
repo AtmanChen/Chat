@@ -4,3 +4,6 @@
 
 ## 截图
 
+| 会话列表
+|--------------
+| ![会话列表](/AppScreenShots/chatList.PNG) 
