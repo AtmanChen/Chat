@@ -14,15 +14,27 @@ public enum MessageOperation: DatabaseOperation {
 
 public struct Message: Identifiable, Codable, Equatable {
 	
-	public let id: Int64
-	public let dialogId: Int64
-	public let senderId: Int64
+	public let id: UUID
+	public let dialogId: UUID
+	public let senderId: UUID
+	public let receiverId: UUID
+	public let senderName: String
 	public let content: String
 	public let timestamp: Int64
-	public init(id: Int64 = 0, dialogId: Int64, senderId: Int64, content: String, timestamp: Int64) {
+	public init(
+		id: UUID,
+		dialogId: UUID,
+		senderId: UUID,
+		receiverId: UUID,
+		senderName: String,
+		content: String,
+		timestamp: Int64
+	) {
 		self.id = id
 		self.dialogId = dialogId
 		self.senderId = senderId
+		self.receiverId = receiverId
+		self.senderName = senderName
 		self.content = content
 		self.timestamp = timestamp
 	}

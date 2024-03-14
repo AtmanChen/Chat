@@ -15,15 +15,15 @@ public protocol DatabaseOperation: Equatable {}
 public struct DatabaseClient {
 	public var createTables: @Sendable () async throws -> Void
 	public var fetchQuickReplies: @Sendable () async throws -> [QuickReply]
-	public var fetchContact: @Sendable (Int64) async throws -> Contact?
+	public var fetchContact: @Sendable (UUID) async throws -> Contact?
 	public var fetchContacts: @Sendable () async throws -> [Contact]
-	public var fetchDialog: @Sendable (Int64) async throws -> Dialog?
-	public var openDialog: @Sendable (Int64) async throws -> Void
-	public var isDialogExist: @Sendable (Int64) async throws -> Bool
-	public var fetchDialogs: @Sendable () async throws -> [Dialog]
-	public var fetchDialogMessages: @Sendable (Int64) async throws -> [Message]
+	public var openDialogWithPeerId: @Sendable (UUID) async throws -> UUID?
+	public var isDialogExist: @Sendable (UUID) async throws -> Bool
+	public var fetchAllDialogs: @Sendable () async throws -> [Dialog]
+	public var fetchDialogs: @Sendable ([UUID]) async throws -> [Dialog]
+	public var fetchDialogMessages: @Sendable (UUID) async throws -> [Message]
 	public var insertContacts: @Sendable ([Contact]) async throws -> [Contact]
-	public var deleteContacts: @Sendable ([Int64]) async throws -> Void
+	public var deleteContacts: @Sendable ([UUID]) async throws -> Void
 	public var insertDialogs: @Sendable ([Dialog]) async throws -> [Dialog]
 	public var insertMessages: @Sendable ([Message]) async throws -> [Message]?
 	public var listener: @Sendable () -> AsyncStream<any DatabaseOperation> = { .finished }
@@ -40,30 +40,35 @@ public extension DependencyValues {
 
 extension DatabaseClient: DependencyKey {
 	public static var liveValue: DatabaseClient = {
-		let documentDir = FileManager.SearchPathDirectory.documentDirectory
-		let documentPath = FileManager.default.urls(for: documentDir, in: .userDomainMask).first!
-		let dbPath = documentPath.appendingPathComponent("db.sqlite3")
+		let supportDir = FileManager.SearchPathDirectory.applicationSupportDirectory
+		let supportPath = try! FileManager.default.url(for: supportDir, in: .userDomainMask, appropriateFor: nil, create: true)
+		let dbPath = supportPath.appendingPathComponent("db.sqlite3")
 		debugPrint("\(dbPath.absoluteString)")
 		let db = try! Connection(dbPath.path)
 
 		let contactsTable = Table("contacts")
-		let contactIdEx = Expression<Int64>("id")
+		let contactIdEx = Expression<UUID>("id")
 		let contactNameEx = Expression<String>("name")
 
 		let dialogsTable = Table("dialogs")
-		let dialogPeerIdEx = Expression<Int64>("peerId")
+		let dialogIdEx = Expression<UUID>("id")
+		let dialogparticipantId1Ex = Expression<UUID>("participantId1")
+		let dialogparticipantId2Ex = Expression<UUID>("participantId2")
 		let dialogTitleEx = Expression<String>("title")
-		let dialogLatestMessageIdEx = Expression<Int64?>("latestMessageId")
+		let dialogLatestUpdateTimestampEx = Expression<Int64>("latestUpdateTimestamp")
+		let dialogLatestMessageIdEx = Expression<UUID?>("latestMessageId")
 
 		let messagesTable = Table("messages")
-		let messageIdEx = Expression<Int64>("id")
-		let messageDialogIdEx = Expression<Int64>("dialogId")
-		let messageSenderIdEx = Expression<Int64>("senderId")
+		let messageIdEx = Expression<UUID>("id")
+		let messageDialogIdEx = Expression<UUID>("dialogId")
+		let messageSenderIdEx = Expression<UUID>("senderId")
+		let messageReceiverIdEx = Expression<UUID>("receiverId")
+		let messageSenderNameEx = Expression<String>("senderName")
 		let messageContentEx = Expression<String>("content")
 		let messageTimestampEx = Expression<Int64>("timestamp")
 
 		let quickRepliesTable = Table("quickReplies")
-		let quickReplyIdEx = Expression<Int64>("id")
+		let quickReplyIdEx = Expression<UUID>("id")
 		let quickReplyMessageEx = Expression<String>("message")
 
 		return DatabaseClient(
@@ -74,21 +79,26 @@ extension DatabaseClient: DependencyKey {
 				})
 
 				try db.run(dialogsTable.create(ifNotExists: true) { table in
-					table.column(dialogPeerIdEx, primaryKey: true)
+					table.column(dialogIdEx, primaryKey: true)
+					table.column(dialogparticipantId1Ex)
+					table.column(dialogparticipantId2Ex)
 					table.column(dialogTitleEx)
 					table.column(dialogLatestMessageIdEx)
+					table.column(dialogLatestUpdateTimestampEx)
 				})
 
 				try db.run(messagesTable.create(ifNotExists: true) { table in
-					table.column(messageIdEx, primaryKey: .autoincrement)
+					table.column(messageIdEx, primaryKey: true)
 					table.column(messageDialogIdEx)
 					table.column(messageSenderIdEx)
+					table.column(messageReceiverIdEx)
+					table.column(messageSenderNameEx)
 					table.column(messageContentEx)
 					table.column(messageTimestampEx)
 				})
 
 				try db.run(quickRepliesTable.create(ifNotExists: true) { table in
-					table.column(quickReplyIdEx, primaryKey: .autoincrement)
+					table.column(quickReplyIdEx, primaryKey: true)
 					table.column(quickReplyMessageEx)
 				})
 
@@ -98,20 +108,29 @@ extension DatabaseClient: DependencyKey {
 					"Thank you!",
 					"I agree.",
 					"Could you please provide more information?",
-					"I'm not sure, let me check and get back to you."
+					"I'm not sure, let me check and get back to you.",
 				]
 
 				if try db.scalar(quickRepliesTable.count) == 0 {
-					try db.run(quickRepliesTable.insertMany(defaultQuickReplies.map({ reply in
-						[quickReplyMessageEx <- reply]
-					})))
+					@Dependency(\.uuid) var uuid
+					try db.run(
+						quickRepliesTable.insertMany(
+							defaultQuickReplies.map {
+								reply in
+								[
+									quickReplyMessageEx <- reply,
+									quickReplyIdEx <- uuid(),
+								]
+							}
+						)
+					)
 				}
 			},
 			fetchQuickReplies: {
-				try db.prepare(quickRepliesTable.order(quickReplyIdEx.desc)).map { row in
-					QuickReply(
-						id: try row.get(quickReplyIdEx),
-						message: try row.get(quickReplyMessageEx)
+				try db.prepare(quickRepliesTable).map { row in
+					try QuickReply(
+						id: row.get(quickReplyIdEx),
+						message: row.get(quickReplyMessageEx)
 					)
 				}
 			},
@@ -132,56 +151,53 @@ extension DatabaseClient: DependencyKey {
 					)
 				}
 			},
-			fetchDialog: { peerId in
-//				let query = """
-//				SELECT
-//						d.peerId,
-//						d.title,
-//						d.latestMessageId,
-//						m.messageId,
-//						m.senderId,
-//						m.content,
-//						m.timestamp
-//				FROM
-//						dialogs d
-//				LEFT JOIN messages m ON d.latestMessageId = m.messageId
-//				WHERE
-//						d.peerId = ?
-//				"""
-				let query = dialogsTable
-					.filter(dialogPeerIdEx == peerId)
-				return try db.pluck(query).map { row in
-					try Dialog(
-						peerId: row.get(dialogPeerIdEx),
-						title: row.get(dialogTitleEx)
-					)
+//			fetchDialog: { dialogId in
+//				let query = dialogsTable
+//					.filter(dialogPeerIdEx == peerId)
+//				return try db.pluck(query).map { row in
+//					try Dialog(
+//						peerId: row.get(dialogPeerIdEx),
+//						title: row.get(dialogTitleEx)
+//					)
+//				}
+//			},
+			openDialogWithPeerId: { peerId in
+				let dialogQuery = dialogsTable.filter(dialogparticipantId1Ex == peerId || dialogparticipantId2Ex == peerId)
+				let dialogIdQuery = dialogQuery.select(dialogIdEx)
+				if let dialogId = try db.pluck(dialogIdQuery)?.get(dialogIdEx) {
+					updateSubject.send(ContactOperation.open(dialogId: dialogId))
+					return dialogId
 				}
-			},
-			openDialog: { peerId in
-				updateSubject.send(ContactOperation.open(contactId: peerId))
+				return nil
 			},
 			isDialogExist: { peerId in
-				let countQuery = dialogsTable.filter(dialogPeerIdEx == peerId).count
+				let countQuery = dialogsTable.filter(dialogparticipantId1Ex == peerId || dialogparticipantId2Ex == peerId).count
 				let count = try db.scalar(countQuery)
 				return count > 0
 			},
-			fetchDialogs: {
+			fetchAllDialogs: {
 				var dialogs: [Dialog] = []
 				try db.transaction {
-					let dialogsQuery = dialogsTable.order(dialogLatestMessageIdEx.desc)
+					let dialogsQuery = dialogsTable.order(dialogLatestUpdateTimestampEx.desc)
 					for dialogRow in try db.prepare(dialogsQuery) {
-						let dialogId = try dialogRow.get(dialogPeerIdEx)
+						let dialogId = try dialogRow.get(dialogIdEx)
 						let dialogName = try dialogRow.get(dialogTitleEx)
 						if let latestMessageId = try dialogRow.get(dialogLatestMessageIdEx) {
 							let latestMessageQuery = messagesTable.filter(messageIdEx == latestMessageId)
 							if let messageRow = try db.pluck(latestMessageQuery) {
 								let dialog = try Dialog(
-									peerId: dialogId,
+									id: dialogId,
+									participantId1: dialogRow.get(dialogparticipantId1Ex),
+									participantId2: dialogRow.get(dialogparticipantId2Ex),
 									title: dialogName,
+									latestUpdateTimestamp: dialogRow.get(dialogLatestUpdateTimestampEx),
 									latestMessageId: latestMessageId,
 									latestMessage: Message(
+										id: messageRow.get(messageIdEx),
 										dialogId: dialogId,
 										senderId: messageRow.get(messageSenderIdEx),
+										receiverId: messageRow.get(messageReceiverIdEx),
+										senderName: messageRow.get(messageSenderNameEx),
 										content: messageRow.get(messageContentEx),
 										timestamp: messageRow.get(messageTimestampEx)
 									)
@@ -193,14 +209,49 @@ extension DatabaseClient: DependencyKey {
 				}
 				return dialogs
 			},
+			fetchDialogs: { dialogIds in
+				let query = dialogsTable.filter(dialogIds.contains(dialogIdEx))
+				let rows = try db.prepare(query)
+				var fetchedDialogs: [Dialog] = []
+				for row in rows {
+					var dialog = try Dialog(
+						id: row.get(dialogIdEx),
+						participantId1: row.get(dialogparticipantId1Ex),
+						participantId2: row.get(dialogparticipantId2Ex),
+						title: row.get(dialogTitleEx),
+						latestUpdateTimestamp: row.get(dialogLatestUpdateTimestampEx),
+						latestMessageId: row.get(dialogLatestMessageIdEx)
+					)
+					if let latestMessageId = dialog.latestMessageId {
+						let messageQuery = messagesTable.filter(messageIdEx == latestMessageId)
+						if let messageRow = try db.pluck(messageQuery) {
+							let message = try Message(
+								id: messageRow.get(messageIdEx),
+								dialogId: messageRow.get(messageDialogIdEx),
+								senderId: messageRow.get(messageSenderIdEx),
+								receiverId: messageRow.get(messageReceiverIdEx),
+								senderName: messageRow.get(messageSenderNameEx),
+								content: messageRow.get(messageContentEx),
+								timestamp: messageRow.get(messageTimestampEx)
+							)
+							dialog.latestMessage = message
+						}
+					}
+					fetchedDialogs.append(dialog)
+				}
+				return fetchedDialogs
+			},
 			fetchDialogMessages: { dialogId in
-				try db.prepare("SELECT * FROM messages WHERE dialogId = ? ORDER BY timestamp ASC", dialogId).map { row in
-					Message(
-						id: row[0] as! Int64,
-						dialogId: row[1] as! Int64,
-						senderId: row[2] as! Int64,
-						content: row[3] as! String,
-						timestamp: row[4] as! Int64
+				let query = messagesTable.filter(messageDialogIdEx == dialogId).order(messageTimestampEx.asc)
+				return try db.prepare(query).map { row in
+					try Message(
+						id: row.get(messageIdEx),
+						dialogId: row.get(messageDialogIdEx),
+						senderId: row.get(messageSenderIdEx),
+						receiverId: row.get(messageReceiverIdEx),
+						senderName: row.get(messageSenderNameEx),
+						content: row.get(messageContentEx),
+						timestamp: row.get(messageTimestampEx)
 					)
 				}
 			},
@@ -217,26 +268,36 @@ extension DatabaseClient: DependencyKey {
 				return cs
 			},
 			deleteContacts: { peerIds in
+				var deletedDialogIds: [UUID] = []
 				try db.transaction {
 					for peerId in peerIds {
 						try db.run(contactsTable.filter(contactIdEx == peerId).delete())
-						try db.run(dialogsTable.filter(dialogPeerIdEx == peerId).delete())
-						try db.run(messagesTable.filter(messageDialogIdEx == peerId).delete())
+						let dialogQuery = dialogsTable.filter(dialogparticipantId1Ex == peerId || dialogparticipantId2Ex == peerId)
+						let dialogIdQuery = dialogQuery.select(dialogIdEx)
+						if let dialogIdRow = try? db.pluck(dialogIdQuery) {
+							let dialogId = try dialogIdRow.get(dialogIdEx)
+							try db.run(messagesTable.filter(messageDialogIdEx == dialogId).delete())
+							try db.run(dialogQuery.delete())
+							deletedDialogIds.append(dialogId)
+						}
 					}
 				}
-				updateSubject.send(ContactOperation.delete(contactIds: peerIds))
+				updateSubject.send(ContactOperation.delete(dialogIds: deletedDialogIds))
 			},
 			insertDialogs: { dialogs in
 				var insertedDialogs: [Dialog] = []
 				try db.transaction {
 					for dialog in dialogs {
 						let insert = dialogsTable.insert(
-							dialogPeerIdEx <- dialog.peerId,
+							dialogIdEx <- dialog.id,
+							dialogparticipantId1Ex <- dialog.participantId1,
+							dialogparticipantId2Ex <- dialog.participantId2,
 							dialogTitleEx <- dialog.title,
+							dialogLatestUpdateTimestampEx <- dialog.latestUpdateTimestamp,
 							dialogLatestMessageIdEx <- dialog.latestMessageId
 						)
 						try db.run(insert)
-						updateSubject.send(ContactOperation.open(contactId: dialog.peerId))
+						updateSubject.send(ContactOperation.open(dialogId: dialog.id))
 					}
 				}
 				return insertedDialogs
@@ -246,26 +307,44 @@ extension DatabaseClient: DependencyKey {
 				try db.transaction {
 					for message in messages {
 						let insert = messagesTable.insert(
+							messageIdEx <- message.id,
 							messageDialogIdEx <- message.dialogId,
 							messageSenderIdEx <- message.senderId,
+							messageReceiverIdEx <- message.receiverId,
+							messageSenderNameEx <- message.senderName,
 							messageContentEx <- message.content,
 							messageTimestampEx <- message.timestamp
 						)
-						let rowId = try db.run(insert)
-						let insertedMessage = Message(
-							id: rowId,
-							dialogId: message.dialogId,
-							senderId: message.senderId,
-							content: message.content,
-							timestamp: message.timestamp
-						)
-						let dialogUpdate = dialogsTable
-							.filter(dialogPeerIdEx == message.dialogId)
-							.update(
-								dialogLatestMessageIdEx <- rowId
+						try db.run(insert)
+						let targetDialog = try db.pluck(dialogsTable.filter(dialogIdEx == message.dialogId)).map { row in
+							try Dialog(
+								id: row.get(dialogIdEx),
+								participantId1: row.get(dialogparticipantId1Ex),
+								participantId2: row.get(dialogparticipantId2Ex),
+								title: row.get(dialogTitleEx),
+								latestUpdateTimestamp: row.get(dialogLatestUpdateTimestampEx)
 							)
-						try db.run(dialogUpdate)
-						insertedMessages.append(insertedMessage)
+						}
+
+						if let targetDialog {
+							let dialogUpdate = dialogsTable
+								.filter(dialogIdEx == message.dialogId)
+								.update(
+									dialogLatestMessageIdEx <- message.id
+								)
+							try db.run(dialogUpdate)
+						} else {
+							let dialogInsert = dialogsTable.insert(
+								dialogIdEx <- message.dialogId,
+								dialogparticipantId1Ex <- message.senderId,
+								dialogparticipantId2Ex <- message.receiverId,
+								dialogTitleEx <- message.senderName,
+								dialogLatestUpdateTimestampEx <- message.timestamp,
+								dialogLatestMessageIdEx <- message.id
+							)
+							try db.run(dialogInsert)
+						}
+						insertedMessages.append(message)
 					}
 					updateSubject.send(MessageOperation.didSendMessage(message: insertedMessages))
 				}

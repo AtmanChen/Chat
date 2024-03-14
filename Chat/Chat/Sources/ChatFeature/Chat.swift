@@ -15,10 +15,10 @@ public struct ChatLogic {
 		var view: View.State
 		public init() {
 			@Dependency(\.accountClient) var accountClient
-			do {
-				account = try accountClient.currentAccount()
+			if let account = accountClient.currentAccount() {
+				self.account = account
 				view = .navigation(NavigationLogic.State())
-			} catch {
+			} else {
 				view = .login(LoginLogic.State())
 			}
 		}

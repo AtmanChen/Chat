@@ -12,7 +12,7 @@ import DependenciesMacros
 
 @DependencyClient
 public struct AccountClient {
-	public var currentAccount: @Sendable () throws -> Account
+	public var currentAccount: @Sendable () -> Account?
 	public var createAccount: @Sendable (Account) async throws -> Void
 	public var removeCurrentAccount: @Sendable () async throws -> Void
 }
@@ -26,7 +26,7 @@ extension AccountClient: DependencyKey {
 				 let accountUUID = UUID(uuidString: accountId) {
 				return Account(id: accountUUID, name: accountName)
 			}
-			throw AccountError.notFound
+			return nil
 		},
 		createAccount: { account in
 			@Dependency(\.userDefaults) var userDefaults

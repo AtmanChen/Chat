@@ -45,7 +45,7 @@ public struct DialogListLogic {
 			case .onTask:
 				state.initialized = true
 				return .run { send in
-					let dialogs = try await databaseClient.fetchDialogs()
+					let dialogs = try await databaseClient.fetchAllDialogs()
 					await send(.fetchDialogsResponse(dialogs))
 				} catch: { error, _ in
 					debugPrint("fetchDialogs: \(error.localizedDescription)")
@@ -61,19 +61,19 @@ public struct DialogListLogic {
 				
 			case let .contactOperationUpdate(contactOperation):
 				switch contactOperation {
-				case let .open(contactId):
-					if let targetDialogIndex = state.dialogs.firstIndex(where: { $0.peerId == contactId }) {
+				case let .open(dialogId):
+					if let targetDialogIndex = state.dialogs.firstIndex(where: { $0.id == dialogId }) {
 						state.dialogs.move(fromOffsets: IndexSet(integer: targetDialogIndex), toOffset: 0)
 						return .none
 					}
-					return .run { [contactId] send in
-						if let dialog = try await databaseClient.fetchDialog(contactId) {
+					return .run { [dialogId] send in
+						if let dialog = try await databaseClient.fetchDialogs([dialogId]).first {
 							await send(.didOpenDialog(dialog))
 						}
 					}
 					
-				case let .delete(peerIds):
-					state.dialogs.removeAll(where: { peerIds.contains($0.peerId) })
+				case let .delete(dialogIds):
+					state.dialogs.removeAll(where: { dialogIds.contains($0.id) })
 					return .none
 				}
 				
@@ -90,7 +90,7 @@ public struct DialogListLogic {
 						return .none
 					}
 					let messageDialogId = message.dialogId
-					if let messageDialogIndex = state.dialogs.firstIndex(where: { $0.peerId == messageDialogId }) {
+					if let messageDialogIndex = state.dialogs.firstIndex(where: { $0.id == messageDialogId }) {
 						var targetDialog = state.dialogs[messageDialogIndex]
 						targetDialog.latestMessageId = message.id
 						targetDialog.latestMessage = message
@@ -101,7 +101,7 @@ public struct DialogListLogic {
 						return .none
 					} else {
 						return .run { [dialogId = message.dialogId] send in
-							if let targetDialog = try await databaseClient.fetchDialog(dialogId) {
+							if let targetDialog = try await databaseClient.fetchDialogs([dialogId]).first {
 								await send(.didOpenDialog(targetDialog))
 							}
 						}

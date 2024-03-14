@@ -8,8 +8,8 @@
 import Foundation
 
 public enum ContactOperation: DatabaseOperation {
-	case open(contactId: Int64)
-	case delete(contactIds: [Int64])
+	case open(dialogId: UUID)
+	case delete(dialogIds: [UUID])
 }
 
 public enum ContactError: Error {
@@ -18,9 +18,9 @@ public enum ContactError: Error {
 }
 
 public struct Contact: Identifiable, Codable, Equatable {
-	public let id: Int64
+	public let id: UUID
 	public var name: String
-	public init(id: Int64, name: String) {
+	public init(id: UUID, name: String) {
 		self.id = id
 		self.name = name
 	}
@@ -30,12 +30,10 @@ public struct Contact: Identifiable, Codable, Equatable {
 	}
 	
 	public static var mocks: [Contact] = [
-		Contact(id: 1001, name: "Bob"),
-		Contact(id: 1002, name: "Lambert"),
-		Contact(id: 1003, name: "Anderson"),
-		Contact(id: 1004, name: "Alice")
+		Contact(id: UUID(1), name: "Bob"),
+		Contact(id: UUID(2), name: "Lambert"),
+		Contact(id: UUID(3), name: "Anderson"),
+		Contact(id: UUID(4), name: "Alice")
 	]
-	
-	public static let `self` = Contact(id: 1000, name: "Huang")
 }
 

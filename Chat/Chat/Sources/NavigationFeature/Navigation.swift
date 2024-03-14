@@ -12,6 +12,7 @@ import Foundation
 import MessageFeature
 import SettingFeature
 import SwiftUI
+import Account
 
 @Reducer
 public struct NavigationLogic {
@@ -48,12 +49,15 @@ public struct NavigationLogic {
 		Scope(state: \.setting, action: \.setting, child: SettingLogic.init)
 		Reduce { state, action in
 			switch action {
-			case let .contact(.delegate(.didSelectContact(contactId))):
-				state.path.append(.messageList(MessageListLogic.State(contactId: contactId)))
+			case let .contact(.delegate(.didSelectContact(dialogId, peerId))):
+				state.path.append(.messageList(MessageListLogic.State(dialogId: dialogId, contactId: peerId)))
 				return .none
 				
 			case let .dialog(.delegate(.didSelectDialog(dialog))):
-				state.path.append(.messageList(MessageListLogic.State(contactId: dialog.peerId)))
+				@Dependency(\.accountClient) var accountClient
+				let selfId = accountClient.currentAccount()!.id
+				let peerId = selfId == dialog.participantId1 ? dialog.participantId2 : dialog.participantId1
+				state.path.append(.messageList(MessageListLogic.State(dialogId: dialog.id, contactId: peerId)))
 				return .none
 
 			case let .tabChanged(tab):

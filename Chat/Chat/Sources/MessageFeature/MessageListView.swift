@@ -17,11 +17,13 @@ public struct MessageListLogic {
 
 	@ObservableState
 	public struct State: Equatable {
-		public var contactId: Int64
+		public var dialogId: UUID
+		public var contactId: UUID
 		public var messages: IdentifiedArrayOf<Message> = []
 		public var messageInput = MessageInputLogic.State()
 		public var dialogTitle: String = ""
-		public init(contactId: Int64) {
+		public init(dialogId: UUID, contactId: UUID) {
+			self.dialogId = dialogId
 			self.contactId = contactId
 		}
 	}
@@ -45,7 +47,9 @@ public struct MessageListLogic {
 		Scope(state: \.messageInput, action: \.messageInput) {
 			MessageInputLogic()
 		}
-		Reduce { state, action in
+		Reduce {
+			state,
+			action in
 			switch action {
 			case .onTask:
 				return .run { [contactId = state.contactId] send in
@@ -69,7 +73,7 @@ public struct MessageListLogic {
 				}
 				
 			case .fetchMessages:
-				return .run { [dialogId = state.contactId] send in
+				return .run { [dialogId = state.dialogId] send in
 					let messages = try await databaseClient.fetchDialogMessages(dialogId)
 					await send(.fetchMessagesResponse(messages))
 				}
@@ -84,9 +88,20 @@ public struct MessageListLogic {
 				}
 				
 			case let .messageInput(.delegate(.sendMessage(messageText))):
-				return .run { [dialogId = state.contactId] send in
-					let rawMessage = Message(dialogId: dialogId, senderId: Contact.`self`.id, content: messageText, timestamp: Int64(Date.now.timeIntervalSince1970))
-					if let messages = try await databaseClient.insertMessages([rawMessage]) {
+				return .run { [dialogId = state.dialogId, receiverId = state.contactId] send in
+					@Dependency(\.uuid) var uuid
+					@Dependency(\.accountClient) var accountClient
+					let currentAccount = accountClient.currentAccount()!
+					let message = Message(
+						id: uuid(),
+						dialogId: dialogId,
+						senderId: currentAccount.id,
+						receiverId: receiverId,
+						senderName: currentAccount.name,
+						content: messageText,
+						timestamp: Int64(Date.now.timeIntervalSince1970)
+					)
+					if let messages = try await databaseClient.insertMessages([message]) {
 						await send(.sendMessageResponse(.success(messages)), animation: .default)
 					}
 				} catch: { error, send in
@@ -107,10 +122,21 @@ public struct MessageListLogic {
 				return .none
 				
 			case .mockReceivedMessages:
-				return .run { [dialogId = state.contactId] send in
+				return .run { [dialogId = state.dialogId, senderId = state.contactId, dialogTitle = state.dialogTitle] send in
 					let quickReplies = try await databaseClient.fetchQuickReplies()
 					if let mockMessageContent = quickReplies.randomElement()?.message {
-						let mockMessage = Message(dialogId: dialogId, senderId: dialogId, content: mockMessageContent, timestamp: Int64(Date.now.timeIntervalSince1970))
+						@Dependency(\.uuid) var uuid
+						@Dependency(\.accountClient) var accountClient
+						let currentAccount = accountClient.currentAccount()!
+						let mockMessage = Message(
+							id: uuid(),
+							dialogId: dialogId,
+							senderId: senderId,
+							receiverId: currentAccount.id,
+							senderName: dialogTitle,
+							content: mockMessageContent,
+							timestamp: Int64(Date.now.timeIntervalSince1970)
+						)
 						let insertedMockMessages = try await databaseClient.insertMessages([mockMessage]) ?? []
 						await send(.didReceiveMessages(messages: insertedMockMessages), animation: .default)
 					}
@@ -200,11 +226,3 @@ public struct MessageListView: View {
 	}
 }
 
-#Preview {
-	MessageListView(
-		store: Store(
-			initialState: MessageListLogic.State(contactId: 1000),
-			reducer: MessageListLogic.init
-		)
-	)
-}

@@ -34,22 +34,24 @@ public struct ContactListLogic {
 		case addContactResponse(Result<Contact, Error>)
 		case didSelectContact(Contact)
 		case didTapDeleteContact(atOffset: IndexSet)
-		case didDeleteContact(peerId: Int64)
+		case didDeleteContact(peerId: UUID)
 		case delegate(Delegate)
 
 		public enum Delegate {
-			case didSelectContact(Int64)
+			case didSelectContact(dialogId: UUID, peerId: UUID)
 		}
 		
 		public enum Alert: Equatable {
-			case confirmDeleteContact(Int64)
+			case confirmDeleteContact(UUID)
 		}
 	}
 
 	@Dependency(\.databaseClient) var databaseClient
 
 	public var body: some ReducerOf<Self> {
-		Reduce { state, action in
+		Reduce {
+			state,
+			action in
 			switch action {
 			case .onTask:
 				return .run { send in
@@ -61,20 +63,18 @@ public struct ContactListLogic {
 				} catch: { _, _ in
 					debugPrint("Fetch Contacts failed...")
 				}
-
+				
 			case let .fetchContactsFromDBResponse(contacts):
 				state.initialized = true
 				state.contacts = IdentifiedArray(uniqueElements: contacts.map(ContactRowLogic.State.init(contact:)))
 				return .none
-
+				
 			case .didTapAddContactButton:
 				state.isLoading = true
-				return .run { [ids = state.contacts.ids] send in
+				return .run { send in
 					@Dependency(\.withRandomNumberGenerator) var withRandomNumberGenerator
-					let maxContactId = ids.max()!
-					let contactId: Int64 = withRandomNumberGenerator { _ in
-						Int64.random(in: maxContactId ..< 9999)
-					}
+					@Dependency(\.uuid) var uuid
+					let contactId = uuid()
 					let (data, _) = try await URLSession.shared.data(from: URL(string: "https://randomuser.me/api")!)
 					let randomResponse = try JSONDecoder().decode(Response.self, from: data)
 					if let name = randomResponse.results.first?.name.description {
@@ -86,7 +86,7 @@ public struct ContactListLogic {
 					debugPrint("Add random contact error: \(error.localizedDescription)")
 					await send(.addContactResponse(.failure(error)))
 				}
-
+				
 			case let .addContactResponse(result):
 				state.isLoading = false
 				switch result {
@@ -123,20 +123,33 @@ public struct ContactListLogic {
 			case let .didDeleteContact(peerId):
 				state.contacts.remove(id: peerId)
 				return .none
-
+				
 			case .contacts:
 				return .none
-
+				
 			case let .didSelectContact(contact):
 				return .run { [peerId = contact.id, peerName = contact.name] send in
 					let isDialogExist = try await databaseClient.isDialogExist(peerId)
+					var dialogId: UUID?
 					if !isDialogExist {
-						let insertDialog = Dialog(peerId: peerId, title: peerName)
+						@Dependency(\.uuid) var uuid
+						@Dependency(\.accountClient) var accountClient
+						let currentAccount = accountClient.currentAccount()!
+						dialogId = uuid()
+						let insertDialog = Dialog(
+							id: dialogId!,
+							participantId1: currentAccount.id,
+							participantId2: peerId,
+							title: peerName,
+							latestUpdateTimestamp: Int64(Date.now.timeIntervalSince1970)
+						)
 						let _ = try await databaseClient.insertDialogs([insertDialog])
 					} else {
-						try await databaseClient.openDialog(peerId)
+						dialogId = try await databaseClient.openDialogWithPeerId(peerId)
 					}
-					await send(.delegate(.didSelectContact(peerId)))
+					if let dialogId {
+						await send(.delegate(.didSelectContact(dialogId: dialogId, peerId: peerId)))
+					}
 				}
 
 			default: return .none

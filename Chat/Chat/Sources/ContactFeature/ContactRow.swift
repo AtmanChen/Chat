@@ -20,7 +20,7 @@ public struct ContactRowLogic {
 		public init(contact: Contact) {
 			self.contact = contact
 		}
-		public var id: Int64 {
+		public var id: UUID {
 			contact.id
 		}
 	}
@@ -56,11 +56,3 @@ public struct ContactRow: View {
 	}
 }
 
-#Preview {
-	ContactRow(
-		store: Store(
-			initialState: ContactRowLogic.State(contact: .`self`),
-			reducer: ContactRowLogic.init
-		)
-	)
-}

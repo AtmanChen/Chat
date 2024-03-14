@@ -9,10 +9,15 @@ import ComposableArchitecture
 import DatabaseClient
 import Foundation
 import SwiftUI
+import Account
 
 public extension Message {
 	var isOutgoing: Bool {
-		senderId == Contact.`self`.id
+		@Dependency(\.accountClient) var accountClient
+		if let selfId = accountClient.currentAccount()?.id {
+			return senderId == selfId
+		}
+		return false
 	}
 
 	var bubbleBackground: AnyGradient {
