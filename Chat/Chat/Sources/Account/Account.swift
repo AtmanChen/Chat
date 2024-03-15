@@ -24,3 +24,19 @@ public struct Account: Identifiable, Codable, Equatable {
 		lhs.id == rhs.id
 	}
 }
+
+#if DEBUG
+public extension Account {
+	static let mocks: [Account] = [
+		Account(id: UUID(1), name: "Benjamin"),
+		Account(id: UUID(2), name: "Lambert"),
+		Account(id: UUID(3), name: "Frank"),
+		Account(id: UUID(4), name: "Anderson"),
+		Account(id: UUID(5), name: "Bob"),
+		Account(id: UUID(6), name: "White"),
+		Account(id: UUID(7), name: "Alice"),
+		Account(id: UUID(8), name: "Michael"),
+		Account(id: UUID(9), name: "Lucy"),
+	]
+}
+#endif

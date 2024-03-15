@@ -12,6 +12,7 @@ import DependenciesMacros
 
 @DependencyClient
 public struct AccountClient {
+	public var mocks: @Sendable () throws -> [Account]
 	public var currentAccount: @Sendable () -> Account?
 	public var createAccount: @Sendable (Account) async throws -> Void
 	public var removeCurrentAccount: @Sendable () async throws -> Void
@@ -19,6 +20,9 @@ public struct AccountClient {
 
 extension AccountClient: DependencyKey {
 	public static var liveValue: AccountClient = Self(
+		mocks: {
+			Account.mocks
+		},
 		currentAccount: {
 			@Dependency(\.userDefaults) var userDefaults
 			if let accountName = userDefaults.stringForKey("currentAccountName"),

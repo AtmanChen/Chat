@@ -10,6 +10,7 @@ import DatabaseClient
 import Foundation
 import MessageFeature
 import SwiftUI
+import Account
 
 @Reducer
 public struct ContactListLogic {
@@ -55,10 +56,7 @@ public struct ContactListLogic {
 			switch action {
 			case .onTask:
 				return .run { send in
-					var contacts = try await databaseClient.fetchContacts()
-					if contacts.isEmpty {
-						try contacts.append(contentsOf: await databaseClient.insertContacts(Contact.mocks))
-					}
+					let contacts = try await databaseClient.fetchContacts()
 					await send(.fetchContactsFromDBResponse(contacts))
 				} catch: { _, _ in
 					debugPrint("Fetch Contacts failed...")

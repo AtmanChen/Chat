@@ -9,7 +9,10 @@ import Account
 import ComposableArchitecture
 import DatabaseClient
 import Foundation
+import MqttClient
 import SwiftUI
+import Constant
+import CocoaMQTT
 
 @Reducer
 public struct MessageListLogic {
@@ -42,6 +45,7 @@ public struct MessageListLogic {
 
 	@Dependency(\.databaseClient) var databaseClient
 	@Dependency(\.dismiss) var dismiss
+	@Dependency(\.mqtt) var mqtt
 
 	public var body: some ReducerOf<Self> {
 		Scope(state: \.messageInput, action: \.messageInput) {
@@ -49,7 +53,7 @@ public struct MessageListLogic {
 		}
 		Reduce {
 			state,
-			action in
+				action in
 			switch action {
 			case .onTask:
 				return .run { [contactId = state.contactId] send in
@@ -71,22 +75,22 @@ public struct MessageListLogic {
 				return .run { send in
 					await send(.fetchMessages)
 				}
-				
+
 			case .fetchMessages:
 				return .run { [dialogId = state.dialogId] send in
 					let messages = try await databaseClient.fetchDialogMessages(dialogId)
 					await send(.fetchMessagesResponse(messages))
 				}
-				
+
 			case let .fetchMessagesResponse(messages):
 				state.messages.append(contentsOf: messages)
 				return .none
-				
+
 			case .didTapBackButton:
 				return .run { _ in
 					await dismiss()
 				}
-				
+
 			case let .messageInput(.delegate(.sendMessage(messageText))):
 				return .run { [dialogId = state.dialogId, receiverId = state.contactId] send in
 					@Dependency(\.uuid) var uuid
@@ -103,11 +107,22 @@ public struct MessageListLogic {
 					)
 					if let messages = try await databaseClient.insertMessages([message]) {
 						await send(.sendMessageResponse(.success(messages)), animation: .default)
+						
+						let sendMessageTopic = Constant.mqttChatTopicString(receiverId.uuidString)
+						if let messageData = try? JSONEncoder().encode(message),
+							 let messageContent = String(data: messageData, encoding: .utf8) {
+							try await mqtt.publishMessages(
+								[
+									CocoaMQTT5Message(topic: sendMessageTopic, string: messageContent)
+								]
+							)
+						}
+						
 					}
 				} catch: { error, send in
 					await send(.sendMessageResponse(.failure(error)))
 				}
-				
+
 			case let .sendMessageResponse(result):
 				switch result {
 				case let .success(messages):
@@ -116,11 +131,11 @@ public struct MessageListLogic {
 				case .failure:
 					return .none
 				}
-				
+
 			case let .didReceiveMessages(messages):
 				state.messages.append(contentsOf: messages)
 				return .none
-				
+
 			case .mockReceivedMessages:
 				return .run { [dialogId = state.dialogId, senderId = state.contactId, dialogTitle = state.dialogTitle] send in
 					let quickReplies = try await databaseClient.fetchQuickReplies()
@@ -141,7 +156,7 @@ public struct MessageListLogic {
 						await send(.didReceiveMessages(messages: insertedMockMessages), animation: .default)
 					}
 				}
-				
+
 			case .messageInput:
 				return .none
 			}
@@ -164,12 +179,12 @@ public struct MessageListView: View {
 						.scaleEffect(x: 1, y: -1)
 				}
 			}
-			
+
 			.listStyle(.plain)
 			.padding(5)
 			.scrollIndicators(.hidden)
 			.scaleEffect(x: 1, y: -1)
-			
+
 			Spacer()
 			MessageInputView(
 				store: store.scope(state: \.messageInput, action: \.messageInput)
@@ -225,4 +240,3 @@ public struct MessageListView: View {
 		}
 	}
 }
-

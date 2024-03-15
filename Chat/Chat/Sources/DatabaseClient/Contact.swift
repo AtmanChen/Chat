@@ -30,10 +30,10 @@ public struct Contact: Identifiable, Codable, Equatable {
 	}
 	
 	public static var mocks: [Contact] = [
-		Contact(id: UUID(1), name: "Bob"),
-		Contact(id: UUID(2), name: "Lambert"),
+//		Contact(id: UUID(1), name: "Bob"),
+//		Contact(id: UUID(2), name: "Lambert"),
 		Contact(id: UUID(3), name: "Anderson"),
-		Contact(id: UUID(4), name: "Alice")
+//		Contact(id: UUID(4), name: "Alice")
 	]
 }
 

@@ -11,6 +11,7 @@ import DatabaseClient
 import Foundation
 import MessageFeature
 import SwiftUI
+import MqttClient
 
 @Reducer
 public struct DialogListLogic {
@@ -20,11 +21,15 @@ public struct DialogListLogic {
 	public struct State: Equatable {
 		public var initialized = false
 		public var dialogs: IdentifiedArrayOf<Dialog> = []
+		public var connState: MqttConnState?
+		public var accountName: String = "Chat"
 		public init() {}
 	}
 
 	public enum Action {
 		case onTask
+		case updateConnState(MqttConnState)
+		case fetchAccountNameResponse(String)
 		case messageOperationUpdate(MessageOperation)
 		case contactOperationUpdate(ContactOperation)
 		case fetchDialogsResponse([Dialog])
@@ -47,9 +52,16 @@ public struct DialogListLogic {
 				return .run { send in
 					let dialogs = try await databaseClient.fetchAllDialogs()
 					await send(.fetchDialogsResponse(dialogs))
+					@Dependency(\.accountClient) var accountClient
+					if let account = accountClient.currentAccount() {
+						await send(.fetchAccountNameResponse(account.name))
+					}
 				} catch: { error, _ in
 					debugPrint("fetchDialogs: \(error.localizedDescription)")
 				}
+			case let .fetchAccountNameResponse(name):
+				state.accountName = name
+				return .none
 				
 			case let .fetchDialogsResponse(dialogs):
 				state.dialogs = IdentifiedArray(uniqueElements: dialogs)
@@ -76,6 +88,10 @@ public struct DialogListLogic {
 					state.dialogs.removeAll(where: { dialogIds.contains($0.id) })
 					return .none
 				}
+				
+			case let .updateConnState(connState):
+				state.connState = connState
+				return .none
 				
 			case let .didSelectDialog(dialog):
 				return .send(.delegate(.didSelectDialog(dialog)))
@@ -124,10 +140,23 @@ public struct DialogListView: View {
 	public var body: some View {
 		VStack {
 			List {
-				Text("Chat")
-					.font(.system(size: 40, weight: .black))
-					.frame(maxWidth: .infinity, alignment: .leading)
-					.listRowSeparator(.hidden)
+				HStack(alignment: .center) {
+					Text("\(store.accountName)")
+						.font(.system(size: 40, weight: .black))
+						
+					if let connState = store.connState {
+						switch connState {
+						case .connected:
+							EmptyView()
+						default:
+							ProgressView()
+								.progressViewStyle(.circular)
+								.padding(.horizontal, 4)
+						}
+					}
+					Spacer()
+				}
+				.listRowSeparator(.hidden)
 				ForEach(store.dialogs) { dialog in
 					DialogCellView(dialog: dialog)
 						.listRowBackground(Color.clear)

@@ -27,6 +27,7 @@ public struct DatabaseClient {
 	public var insertDialogs: @Sendable ([Dialog]) async throws -> [Dialog]
 	public var insertMessages: @Sendable ([Message]) async throws -> [Message]?
 	public var listener: @Sendable () -> AsyncStream<any DatabaseOperation> = { .finished }
+	public var logout: @Sendable () async throws -> Void
 
 	private static let updateSubject = PassthroughSubject<any DatabaseOperation, Never>()
 }
@@ -358,6 +359,13 @@ extension DatabaseClient: DependencyKey {
 					continuation.onTermination = { _ in
 						cancellable.cancel()
 					}
+				}
+			},
+			logout: {
+				try db.transaction {
+					try db.run(contactsTable.delete())
+					try db.run(dialogsTable.delete())
+					try db.run(messagesTable.delete())
 				}
 			}
 		)

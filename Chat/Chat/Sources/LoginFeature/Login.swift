@@ -59,7 +59,7 @@ public struct LoginLogic {
 					try await Task.sleep(for: .seconds(1.5))
 					try await accountClient.createAccount(
 						Account(
-							id: uuid(),
+							id: UUID(1),
 							name: phoneNumber
 						)
 					)
@@ -88,12 +88,13 @@ public struct LoginLogic {
 				state.isLoading = false
 				state.focus = nil
 				return .run { send in
-					let currentAccount = try accountClient.currentAccount()
-					notificationCenter.post(
-						Constant.DidLoginNotification,
-						nil,
-						["account": currentAccount]
-					)
+					if let currentAccount = accountClient.currentAccount() {
+						notificationCenter.post(
+							Constant.DidLoginNotification,
+							nil,
+							["account": currentAccount]
+						)
+					}
 				} catch: { error, send in
 					print("Get current account error")
 				}

@@ -27,12 +27,8 @@ public struct ContactRowLogic {
 	public enum Action: Equatable {
 		
 	}
-	public var body: some ReducerOf<Self> {
-		Reduce { state, action in
-			switch action {
-				
-			}
-		}
+	public func reduce(into state: inout State, action: Action) -> Effect<Action> {
+		
 	}
 }
 

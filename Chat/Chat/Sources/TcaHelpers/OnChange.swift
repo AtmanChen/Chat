@@ -2,15 +2,15 @@ import ComposableArchitecture
 
 public extension Reducer {
 	@inlinable
-	func onChange<ChildState: Equatable>(
+	func onChangeAction<ChildState: Equatable>(
 		of toLocalState: @escaping (State) -> ChildState,
 		perform additionalEffects: @escaping (ChildState, inout State, Action) -> Effect<Action>
 	) -> some Reducer<State, Action> {
-		onChange(of: toLocalState) { additionalEffects($1, &$2, $3) }
+		onChangeAction(of: toLocalState) { additionalEffects($1, &$2, $3) }
 	}
 
 	@inlinable
-	func onChange<ChildState: Equatable>(
+	func onChangeAction<ChildState: Equatable>(
 		of toLocalState: @escaping (State) -> ChildState,
 		perform additionalEffects: @escaping (ChildState, ChildState, inout State, Action) ->
 			Effect<Action>

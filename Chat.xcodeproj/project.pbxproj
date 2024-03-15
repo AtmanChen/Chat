@@ -11,6 +11,8 @@
 		71A35D7B2B9C7E6800735D90 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 71A35D7A2B9C7E6800735D90 /* Assets.xcassets */; };
 		71A35D7E2B9C7E6800735D90 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 71A35D7D2B9C7E6800735D90 /* Preview Assets.xcassets */; };
 		71A35D892B9C9D1800735D90 /* ChatFeature in Frameworks */ = {isa = PBXBuildFile; productRef = 71A35D882B9C9D1800735D90 /* ChatFeature */; };
+		71BBB2652BA3EF8100E2423E /* Account in Frameworks */ = {isa = PBXBuildFile; productRef = 71BBB2642BA3EF8100E2423E /* Account */; };
+		71BBB2672BA3F01900E2423E /* MqttClient in Frameworks */ = {isa = PBXBuildFile; productRef = 71BBB2662BA3F01900E2423E /* MqttClient */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -26,6 +28,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				71BBB2672BA3F01900E2423E /* MqttClient in Frameworks */,
+				71BBB2652BA3EF8100E2423E /* Account in Frameworks */,
 				71A35D892B9C9D1800735D90 /* ChatFeature in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -94,6 +98,8 @@
 			name = Chat;
 			packageProductDependencies = (
 				71A35D882B9C9D1800735D90 /* ChatFeature */,
+				71BBB2642BA3EF8100E2423E /* Account */,
+				71BBB2662BA3F01900E2423E /* MqttClient */,
 			);
 			productName = Chat;
 			productReference = 71A35D732B9C7E6600735D90 /* Chat.app */;
@@ -362,6 +368,14 @@
 		71A35D882B9C9D1800735D90 /* ChatFeature */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = ChatFeature;
+		};
+		71BBB2642BA3EF8100E2423E /* Account */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Account;
+		};
+		71BBB2662BA3F01900E2423E /* MqttClient */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = MqttClient;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

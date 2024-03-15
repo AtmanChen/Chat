@@ -16,9 +16,9 @@ public struct AuthLogic {
 	@Dependency(\.notificationCenter) var notificationCenter
 	
 	public func reduce(into state: inout ChatLogic.State, action: ChatLogic.Action) -> Effect<ChatLogic.Action> {
+		enum Cancel { case id }
 		switch action {
 		case .registerNotification:
-			enum Cancel { case id }
 			return .run { send in
 				for await notification in notificationCenter.observe([Constant.DidLoginNotification, Constant.DidLogoutNotification]) {
 					if notification.name == Constant.DidLoginNotification {
@@ -36,11 +36,11 @@ public struct AuthLogic {
 			
 		case .didLogout:
 			state.account = nil
-			return .none
+			return .cancel(id: Mqtt.Cancel.id).merge(with: .cancel(id: DatabaseObservation.Cancel.id))
 			
 		case let .didLoginSuccessResponse(account):
 			state.account = account
-			return .none
+			return .send(.registerMqtt)
 			
 		default: return .none
 		}

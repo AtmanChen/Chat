@@ -50,11 +50,17 @@ let package = Package(
 				.library(
 						name: "MessageFeature",
 						targets: ["MessageFeature"]),
+				.library(
+						name: "MqttClient",
+						targets: ["MqttClient"]),
+				.library(
+						name: "AccountSelectionFeature",
+						targets: ["AccountSelectionFeature"]),
     ],
 		dependencies: [
 			.package(url: "https://github.com/stephencelis/SQLite.swift.git", from: "0.15.0"),
-			.package(url: "https://github.com/pointfreeco/swift-composable-architecture.git", from: "1.8.0")
-			
+			.package(url: "https://github.com/pointfreeco/swift-composable-architecture.git", from: "1.8.0"),
+			.package(url: "https://github.com/emqx/CocoaMQTT.git", from: "2.1.8")
 		],
     targets: [
         // Targets are the basic building blocks of a package, defining a module or a test suite.
@@ -70,7 +76,9 @@ let package = Package(
 							"NotificationCenterClient",
 							"Constant",
 							"TcaHelpers",
-							.product(name: "ComposableArchitecture", package: "swift-composable-architecture")
+							"MqttClient",
+							"AccountSelectionFeature",
+							.product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
 						]),
 				.target(
 					name: "DatabaseClient",
@@ -96,6 +104,8 @@ let package = Package(
 						"DialogFeature",
 						"SettingFeature",
 						"MessageFeature",
+						"MqttClient",
+						"DatabaseClient",
 						.product(name: "ComposableArchitecture", package: "swift-composable-architecture")
 					]
 				),
@@ -138,7 +148,9 @@ let package = Package(
 						"Constant",
 						"DatabaseClient",
 						"MessageFeature",
-						.product(name: "ComposableArchitecture", package: "swift-composable-architecture")
+						"MqttClient",
+						.product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
+						.product(name: "CocoaMQTT", package: "CocoaMQTT")
 					]
 				),
 				.target(
@@ -150,7 +162,9 @@ let package = Package(
 						"Constant",
 						"DatabaseClient",
 						"MessageFeature",
-						.product(name: "ComposableArchitecture", package: "swift-composable-architecture")
+						"MqttClient",
+						.product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
+						.product(name: "CocoaMQTT", package: "CocoaMQTT")
 					]
 				),
 				.target(
@@ -161,6 +175,7 @@ let package = Package(
 						"NotificationCenterClient",
 						"Constant",
 						"DatabaseClient",
+						"MqttClient",
 						.product(name: "ComposableArchitecture", package: "swift-composable-architecture")
 					]
 				),
@@ -172,6 +187,30 @@ let package = Package(
 						"NotificationCenterClient",
 						"Constant",
 						"DatabaseClient",
+						"MqttClient",
+						.product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
+						.product(name: "CocoaMQTT", package: "CocoaMQTT")
+					]
+				),
+				.target(
+					name: "MqttClient",
+					dependencies: [
+						"Account",
+						"UserDefaultsClient",
+						"NotificationCenterClient",
+						"Constant",
+						"DatabaseClient",
+						.product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
+						.product(name: "CocoaMQTT", package: "CocoaMQTT")
+					]
+				),
+				.target(
+					name: "AccountSelectionFeature",
+					dependencies: [
+						"DatabaseClient",
+						"Account",
+						"NotificationCenterClient",
+						"Constant",
 						.product(name: "ComposableArchitecture", package: "swift-composable-architecture")
 					]
 				),
