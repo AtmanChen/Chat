@@ -103,17 +103,19 @@ public struct AccountSelectionView: View {
 					
 				LazyVGrid(columns: columns) {
 					ForEach (store.accounts) { account in
-						Text(account.name)
-							.font(.body.bold())
-							.foregroundStyle(Color(.systemBackground).gradient)
-							.padding()
-							.background(
-								Capsule()
-									.fill(Color.primary)
-							)
-							.onTapGesture {
-								store.send(.didTapAccount(account))
-							}
+						Button {
+							store.send(.didTapAccount(account))
+						} label: {
+							Text(account.name)
+								.font(.body.bold())
+								.foregroundStyle(Color(.systemBackground).gradient)
+								.padding()
+								.background(
+									Capsule()
+										.fill(Color.primary)
+								)
+						}
+						.buttonStyle(.borderless)
 					}
 				}
 				.padding(.top, 36)

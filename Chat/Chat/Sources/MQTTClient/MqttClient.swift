@@ -86,11 +86,19 @@ public struct MqttClient {
 }
 
 extension MqttClient: DependencyKey {
-	public static var liveValue = MqttClient.noop
-	public static func live(config: MqttClientConfiguration) -> Self {
-		MqttClientManager.shared.setupMqttClient(configuration: config)
-		return MqttClientManager.shared.getMqttClient()
-	}
+//	public static var liveValue = MqttClient.noop
+//	public static func live(config: MqttClientConfiguration) -> Self {
+//		MqttClientManager.shared.setupMqttClient(configuration: config)
+//		return MqttClientManager.shared.getMqttClient()
+//	}
+	public static var liveValue: MqttClient = {
+		@Dependency(\.accountClient) var accountClient
+		guard let account = accountClient.currentAccount() else {
+			return .noop
+		}
+		let mqttClientConfiguration = MqttClientConfiguration(clientId: Constant.mqttClientID(account.id))
+		return mqttClientWith(configuration: mqttClientConfiguration)
+	}()
 }
 
 extension MqttClient {
@@ -112,6 +120,7 @@ public let defaultPublishProperies: MqttPublishProperties = {
 }()
 
 public func mqttClientWith(configuration: MqttClientConfiguration) -> MqttClient {
+	debugPrint("mqtt -->> init: \(configuration.clientId)")
 	let mqtt5 = CocoaMQTT5(clientID: configuration.clientId, host: configuration.host, port: configuration.port)
 	mqtt5.username = configuration.userName
 	mqtt5.password = configuration.password
@@ -123,6 +132,7 @@ public func mqttClientWith(configuration: MqttClientConfiguration) -> MqttClient
 			let _ = mqtt5.connect()
 		},
 		disconnect: {
+			debugPrint("mqtt -->> disconnect")
 			mqtt5.disconnect()
 		},
 		subscribeTopics: { topics in
@@ -141,7 +151,7 @@ public func mqttClientWith(configuration: MqttClientConfiguration) -> MqttClient
 			}
 		},
 		logout: {
-			MqttClientManager.shared.logou()
+			
 		},
 		delegate: {
 			AsyncStream { continuation in
@@ -190,11 +200,13 @@ extension MqttClient {
 		}
 		
 		func mqtt5(_ mqtt5: CocoaMQTT5, didUnsubscribeTopics topics: [String], unsubAckData: MqttDecodeUnsubAck?) {
+			debugPrint("mqtt -->> didUnsubscribeTopics: \(topics)")
 			continuation?.yield(.didUnsubscribeTopics(topics: topics))
+			mqtt5.disconnect()
 		}
 		
 		func mqtt5(_ mqtt5: CocoaMQTT5, didReceiveDisconnectReasonCode reasonCode: CocoaMQTTDISCONNECTReasonCode) {
-			
+			debugPrint("mqtt -->> didReceiveDisconnectReasonCode: \(reasonCode)")
 		}
 		
 		func mqtt5(_ mqtt5: CocoaMQTT5, didReceiveAuthReasonCode reasonCode: CocoaMQTTAUTHReasonCode) {
@@ -210,6 +222,7 @@ extension MqttClient {
 		}
 		
 		func mqtt5DidDisconnect(_ mqtt5: CocoaMQTT5, withError err: Error?) {
+			debugPrint("mqtt -->> didDisconnect")
 			continuation?.yield(.didDisConnected)
 		}
 		

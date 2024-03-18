@@ -18,16 +18,16 @@ struct ChatApp: App {
 		reducer: {
 			ChatLogic()
 //				._printChanges()
-				.transformDependency(
-					\.mqtt
-				) {
-					@Dependency(\.accountClient) var accountClient
-					if let accountId = accountClient.currentAccount()?.id {
-						$0 = .live(config: MqttClientConfiguration(accountId: accountId))
-					} else {
-						$0 = .noop
-					}
-				}
+//				.transformDependency(
+//					\.mqtt
+//				) {
+//					@Dependency(\.accountClient) var accountClient
+//					if let accountId = accountClient.currentAccount()?.id {
+//						$0 = .live(config: MqttClientConfiguration(accountId: accountId))
+//					} else {
+//						$0 = .noop
+//					}
+//				}
 		}
 	)
 	var body: some Scene {

@@ -36,7 +36,7 @@ public struct AuthLogic {
 			
 		case .didLogout:
 			state.account = nil
-			return .cancel(id: Mqtt.Cancel.id).merge(with: .cancel(id: DatabaseObservation.Cancel.id))
+			return .none//.cancel(id: Mqtt.Cancel.id).merge(with: .cancel(id: DatabaseObservation.Cancel.id))
 			
 		case let .didLoginSuccessResponse(account):
 			state.account = account

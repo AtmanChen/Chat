@@ -43,15 +43,16 @@ public struct SettingLogic {
 			return .none
 			
 		case .didTapLogoutButton:
-			return .run { send in
+			return .run { [accountId = state.account?.id] send in
 				try await accountClient.removeCurrentAccount()
 				@Dependency(\.databaseClient) var databaseClient
 				try await databaseClient.logout()
 				@Dependency(\.notificationCenter) var notificationCenter
 				notificationCenter.post(Constant.DidLogoutNotification, nil, nil)
 				@Dependency(\.mqtt) var mqtt
-				try await mqtt.disconnect()
-				try await mqtt.logout()
+				if let accountId {
+					try await mqtt.unSubscribeTopics([Constant.mqttClientID(accountId)])
+				}
 			}
 		}
 	}

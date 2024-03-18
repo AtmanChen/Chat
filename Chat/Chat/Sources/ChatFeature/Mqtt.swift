@@ -43,10 +43,9 @@ public struct Mqtt {
 				}
 			case .didDisConnected:
 				state.connState = .disconnected
-				return .run { send in
-					await send(.view(.navigation(.mqttConnState(.disconnected))), animation: .default)
-					await send(.view(.navigation(.dialog(.updateConnState(.disconnected)))), animation: .default)
-				}
+				return .concatenate(
+					.cancel(id: Mqtt.Cancel.id).merge(with: .cancel(id: DatabaseObservation.Cancel.id))
+				)
 				
 			case let .didConnect(ack):
 				return .run { [accountId = state.account?.id]send in
